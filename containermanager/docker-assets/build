@@ -1,0 +1,7 @@
+#!/bin/sh
+go mod init dummy/module > /dev/null 2>&1
+go mod tidy > /dev/null 2>&1
+go build -trimpath -o main main.go > /tmp/build.log 2>&1
+CODE=$?
+[ $CODE -ne 0 ] && cat /tmp/build.log
+exit $CODE

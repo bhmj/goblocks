@@ -1,0 +1,9 @@
+FROM golang:1.23-alpine
+RUN apk update && addgroup -g 1337 -S dummy && adduser -u 1337 -G dummy -S dummy
+COPY docker-assets/build /usr/local/bin/
+RUN chmod +x /usr/local/bin/build
+USER dummy
+RUN mkdir -p /home/dummy/.cache/go-build /go/pkg
+WORKDIR /home/dummy
+RUN go telemetry off
+CMD ["sh"]
