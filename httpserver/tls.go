@@ -36,7 +36,7 @@ func InitListener(cfg Config) (net.Listener, error) {
 	var certFile string
 	var err error
 
-	if cfg.UseSSL {
+	if cfg.UseTLS {
 		certFile, err = cfg.CertFile()
 		if err != nil {
 			return nil, fmt.Errorf("preload certificates: %w", err)
@@ -45,11 +45,11 @@ func InitListener(cfg Config) (net.Listener, error) {
 
 	lnConfig := &ListenerConfig{
 		Address:          fmt.Sprintf(":%d", cfg.Port),
-		TLSEnabled:       cfg.UseSSL,
+		TLSEnabled:       cfg.UseTLS,
 		TLSCertFile:      certFile,
-		TLSKeyFile:       cfg.SSLKey,
-		TLSUseClientCert: cfg.SSLUseClientCert,
-		TLSClientCAFile:  cfg.SSLClientCA,
+		TLSKeyFile:       cfg.TLSKey,
+		TLSUseClientCert: cfg.TLSUseClientCert,
+		TLSClientCAFile:  cfg.TLSClientCA,
 	}
 
 	return newListener(lnConfig)

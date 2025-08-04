@@ -36,8 +36,7 @@ const (
 
 // Server implements basic Kube-dispatched HTTP server
 type Server interface {
-	Run() error
-	Shutdown(ctx context.Context) error
+	Run(ctx context.Context) error
 	HandleFunc(method, pattern string, handler http.HandlerFunc)
 }
 
@@ -97,33 +96,36 @@ func NewServer(
 }
 
 // Run the server
-func (s *httpserver) Run() error {
-	// set server port
+func (s *httpserver) Run(ctx context.Context) error {
 	s.server.Addr = fmt.Sprintf(":%d", s.cfg.Port)
 	s.logger.Info("starting server",
 		log.String("name", s.name),
-		log.Bool("tls", s.cfg.UseSSL),
-		log.Bool("client_auth", s.cfg.SSLUseClientCert),
+		log.Bool("tls", s.cfg.UseTLS),
+		log.Bool("client_auth", s.cfg.TLSUseClientCert),
 		log.Int("port", s.cfg.Port),
 	)
 
-	// server startup
-	if err := s.server.Serve(s.listener); err != nil {
+	errCh := make(chan error, 1)
+	go func() {
+		errCh <- s.server.Serve(s.listener)
+	}()
+
+	select {
+	case err := <-errCh:
 		if errors.Is(err, http.ErrServerClosed) {
-			s.logger.Info(s.name + " server closed")
+			s.logger.Info("server closed", log.String("name", s.name))
 			return nil
 		}
-		return fmt.Errorf("failed to start %s server: %w", s.name, err)
+		return fmt.Errorf("failed to start server: %w", err)
+	case <-ctx.Done():
+		ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
+		defer cancel()
+		err := s.server.Shutdown(ctx)
+		if err != nil {
+			s.logger.Error("failed to shutdown server", log.String("name", s.name), log.Error(err))
+		}
+		return nil
 	}
-
-	return nil
-}
-
-func (s *httpserver) Shutdown(ctx context.Context) error {
-	if err := s.server.Shutdown(ctx); err != nil {
-		return fmt.Errorf("failed to shutdown server: %w", err)
-	}
-	return nil
 }
 
 // HandleFunc adds the following middleware:
