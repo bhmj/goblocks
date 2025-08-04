@@ -36,18 +36,16 @@ import (
 )
 
 var (
-	statsPeriod           = 200 * time.Millisecond
-	errContainerLimitCPU  = errors.New("CPU limit exceeded")
-	errContainerLimitNet  = errors.New("network limit exceeded")
-	errContainerLimitTime = errors.New("run time limit exceeded")
-)
-
-var (
+	statsPeriod              = 200 * time.Millisecond
+	errContainerLimitCPU     = errors.New("CPU limit exceeded")
+	errContainerLimitNet     = errors.New("network limit exceeded")
+	errContainerLimitTime    = errors.New("run time limit exceeded")
 	ErrContainerCreate       = errors.New("container create error")
 	ErrContainerStart        = errors.New("container start error")
 	ErrContainerReady        = errors.New("ready wait timeout")
 	ErrContainerBusy         = errors.New("container is already in use")
 	ErrContainerDoesNotExist = errors.New("container does not exist")
+	ErrStdoutChannelNotSet   = errors.New("stdout channel is not set")
 )
 
 // Resources defines a set of resources (or limits, for that matter) which are available from within the container
@@ -356,6 +354,12 @@ func (cm *containerManager) StopContainer(containerID string, force bool) {
 // Execute runs specified command(s) inside a running container and waits for end of the process OR stops the container if the limits were exceeded.
 // Returns when the container has done executing. Returns app exit code and/or error.
 func (cm *containerManager) Execute(containerID string, commands []string, pipe ContainerPipe, limits RuntimeLimits) (int, error) {
+	if pipe.StdOut == nil {
+		return 0, ErrStdoutChannelNotSet
+	}
+	if pipe.StdErr == nil {
+		pipe.StdErr = pipe.StdOut // use stdout for stderr if not set
+	}
 	execID, err := cm.createExecutor(containerID, commands)
 	if err != nil {
 		msg := err.Error()
@@ -577,8 +581,8 @@ func (cm *containerManager) killAll(containerID string) {
 	}
 }
 
-// checkLimits checks the running container starts and returns error if some resource is exhausted.
-// Returns current CPU time (nsec) and network trafic (bytes).
+// checkLimits checks the running container stats and returns error if some resource is exhausted.
+// Returns current CPU time (nsec) and network traffic (bytes).
 func (cm *containerManager) checkLimits(containerID string, startTime time.Time, startCPU uint64, startNet uint64, limits RuntimeLimits) (uint64, uint64, error) {
 	statsResponse, err := cm.cli.ContainerStatsOneShot(context.Background(), containerID)
 	if err != nil {
@@ -671,17 +675,9 @@ func (cm *containerManager) streamOutput(
 			var ch chan []byte
 			switch streamType {
 			case 1: // stdout
-				if stdoutCh != nil {
-					ch = stdoutCh
-				} else {
-					ch = stderrCh
-				}
+				ch = stdoutCh
 			case 2: // stderr
-				if stderrCh != nil {
-					ch = stderrCh
-				} else {
-					ch = stdoutCh
-				}
+				ch = stderrCh
 			}
 			b := append([]byte{}, buf[:n]...)
 			select {

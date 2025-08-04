@@ -53,7 +53,7 @@ func streamReader(t *testing.T, pipe ContainerPipe) {
 			if !ok {
 				pipe.StdErr = nil
 			} else {
-				stdout += fmt.Sprintf("\nCONSUMED: %d mCPU, %d trafic\n", consumed.CPUTime, consumed.Net)
+				stdout += fmt.Sprintf("\nCONSUMED: %d mCPU, %d traffic\n", consumed.CPUTime, consumed.Net)
 			}
 		}
 	}
