@@ -1,4 +1,4 @@
-package auth
+package apiauth
 
 import "net/http"
 

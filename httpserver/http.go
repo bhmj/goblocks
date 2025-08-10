@@ -14,8 +14,8 @@ import (
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
 
-	"github.com/bhmj/goblocks/auth"
-	"github.com/bhmj/goblocks/auth/token"
+	"github.com/bhmj/goblocks/apiauth"
+	"github.com/bhmj/goblocks/apiauth/token"
 	"github.com/bhmj/goblocks/log"
 )
 
@@ -52,7 +52,7 @@ type httpserver struct {
 	sentryHandler *sentryhttp.Handler
 	connWatcher   *ConnectionWatcher
 	rateLimiter   *rate.Limiter
-	authProvider  auth.Auth
+	authProvider  apiauth.Auth
 }
 
 // NewServer returns an HTTP server
@@ -65,7 +65,7 @@ func NewServer(
 ) (Server, error) {
 	connWatcher := NewConnectionWatcher(metricsRegistry, logger)
 	limiter := rate.NewLimiter(cfg.RateLimit, int(float64(cfg.RateLimit)*rateLimitBurstRatio))
-	var authProvider auth.Auth
+	var authProvider apiauth.Auth
 	if cfg.Token != "" {
 		authProvider = token.New(cfg.Token)
 	}

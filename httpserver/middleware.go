@@ -3,11 +3,11 @@ package httpserver
 import (
 	"net/http"
 
-	"github.com/bhmj/goblocks/auth"
+	"github.com/bhmj/goblocks/apiauth"
 	"golang.org/x/time/rate"
 )
 
-func AuthenticationMiddleware(next http.Handler, auth auth.Auth) http.HandlerFunc {
+func AuthenticationMiddleware(next http.Handler, auth apiauth.Auth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if auth != nil {
 			if err := auth.Authorized(r); err != nil {
