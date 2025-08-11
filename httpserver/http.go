@@ -8,8 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/prometheus/client_golang/prometheus"
-
 	"golang.org/x/time/rate"
 
 	sentryhttp "github.com/getsentry/sentry-go/http"
@@ -17,6 +15,7 @@ import (
 	"github.com/bhmj/goblocks/apiauth"
 	"github.com/bhmj/goblocks/apiauth/token"
 	"github.com/bhmj/goblocks/log"
+	"github.com/bhmj/goblocks/metrics"
 )
 
 // Router implements a basic router interface. Currently in this repo
@@ -60,10 +59,10 @@ func NewServer(
 	cfg Config,
 	router Router,
 	logger log.MetaLogger,
-	metricsRegistry prometheus.Registerer,
+	metricsRegistry *metrics.Registry,
 	sentryHandler *sentryhttp.Handler,
 ) (Server, error) {
-	connWatcher := NewConnectionWatcher(metricsRegistry, logger)
+	connWatcher := NewConnectionWatcher(metricsRegistry.Get(), logger)
 	limiter := rate.NewLimiter(cfg.RateLimit, int(float64(cfg.RateLimit)*rateLimitBurstRatio))
 	var authProvider apiauth.Auth
 	if cfg.Token != "" {

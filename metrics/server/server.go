@@ -1,4 +1,4 @@
-package metrics
+package server
 
 import (
 	"context"
@@ -17,7 +17,7 @@ type PrometheusServer struct {
 	port       int
 }
 
-func NewPrometheusServer(logger log.MetaLogger, handler http.Handler, config httpserver.Config) *PrometheusServer {
+func New(logger log.MetaLogger, handler http.Handler, config httpserver.Config) *PrometheusServer {
 	router := http.NewServeMux()
 	router.Handle("GET /metrics", handler)
 	server := &http.Server{
