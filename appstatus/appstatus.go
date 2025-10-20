@@ -21,8 +21,8 @@ type ServiceStatusReporter interface {
 
 type statusReporter struct {
 	sync.RWMutex
-	alive bool
-	ready map[string]bool
+	appAlive     bool
+	serviceReady map[string]bool
 }
 
 type serviceReporter struct {
@@ -34,46 +34,46 @@ type serviceReporter struct {
 
 func New() StatusReporter {
 	return &statusReporter{
-		ready: make(map[string]bool),
-		alive: true,
+		serviceReady: make(map[string]bool),
+		appAlive:     true,
 	}
 }
 
 func (s *statusReporter) GetServiceReporter(serviceName string) (ServiceStatusReporter, error) {
 	s.Lock()
 	defer s.Unlock()
-	if _, found := s.ready[serviceName]; found {
+	if _, found := s.serviceReady[serviceName]; found {
 		return nil, errAlreadyRegistered
 	}
-	s.ready[serviceName] = false
+	s.serviceReady[serviceName] = false
 	return &serviceReporter{
 		statusReporter: s,
 		serviceName:    serviceName,
 	}, nil
 }
 
-func (s *statusReporter) Ready(name string) {
+func (s *statusReporter) ready(name string) {
 	s.Lock()
 	defer s.Unlock()
-	s.ready[name] = true
+	s.serviceReady[name] = true
 }
 
-func (s *statusReporter) NotReady(name string) {
+func (s *statusReporter) notReady(name string) {
 	s.Lock()
 	defer s.Unlock()
-	s.ready[name] = false
+	s.serviceReady[name] = false
 }
 
-func (s *statusReporter) Dead() {
+func (s *statusReporter) dead() {
 	s.Lock()
 	defer s.Unlock()
-	s.alive = false
+	s.appAlive = false
 }
 
 func (s *statusReporter) IsReady() bool {
 	s.RLock()
 	defer s.RUnlock()
-	for _, ready := range s.ready {
+	for _, ready := range s.serviceReady {
 		if !ready {
 			return false
 		}
@@ -84,23 +84,17 @@ func (s *statusReporter) IsReady() bool {
 func (s *statusReporter) IsAlive() bool {
 	s.RLock()
 	defer s.RUnlock()
-	return s.alive
+	return s.appAlive
 }
 
 func (s *serviceReporter) Ready() {
-	s.statusReporter.Lock()
-	defer s.statusReporter.Unlock()
-	s.statusReporter.ready[s.serviceName] = true
+	s.statusReporter.ready(s.serviceName)
 }
 
 func (s *serviceReporter) NotReady() {
-	s.statusReporter.Lock()
-	defer s.statusReporter.Unlock()
-	s.statusReporter.ready[s.serviceName] = false
+	s.statusReporter.notReady(s.serviceName)
 }
 
 func (s *serviceReporter) Dead() {
-	s.statusReporter.Lock()
-	defer s.statusReporter.Unlock()
-	s.statusReporter.alive = false
+	s.statusReporter.dead()
 }
