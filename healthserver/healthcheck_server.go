@@ -1,4 +1,4 @@
-package podstatus
+package appstatus
 
 import (
 	"context"
@@ -12,15 +12,20 @@ import (
 	"github.com/bhmj/goblocks/log"
 )
 
-type HealthcheckServer struct {
-	server         *http.Server
-	statusReporter PodStatus
-	logger         log.MetaLogger
-	port           int
+type AppStatus interface {
+	IsReady() bool
+	IsAlive() bool
 }
 
-func NewHealthcheckServer(logger log.MetaLogger, port int, statusReporter PodStatus) *HealthcheckServer {
-	health := &HealthcheckServer{statusReporter: statusReporter, logger: logger, port: port}
+type HealthcheckServer struct {
+	server    *http.Server
+	appStatus AppStatus
+	logger    log.MetaLogger
+	port      int
+}
+
+func NewHealthcheckServer(logger log.MetaLogger, port int, appStatus AppStatus) *HealthcheckServer {
+	health := &HealthcheckServer{appStatus: appStatus, logger: logger, port: port}
 	router := http.NewServeMux()
 	router.HandleFunc("GET /ready", health.ReadyHandler)
 	router.HandleFunc("GET /alive", health.AliveHandler)
@@ -60,7 +65,7 @@ func (s *HealthcheckServer) ReadyHandler(w http.ResponseWriter, r *http.Request)
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 
-	if s.statusReporter.IsReady() {
+	if s.appStatus.IsReady() {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -71,7 +76,7 @@ func (s *HealthcheckServer) AliveHandler(w http.ResponseWriter, r *http.Request)
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 
-	if s.statusReporter.IsAlive() {
+	if s.appStatus.IsAlive() {
 		w.WriteHeader(http.StatusOK)
 	} else {
 		w.WriteHeader(http.StatusInternalServerError)
