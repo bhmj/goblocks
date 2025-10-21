@@ -1,4 +1,4 @@
-package appstatus
+package healthserver
 
 import (
 	"context"
@@ -17,15 +17,15 @@ type AppStatus interface {
 	IsAlive() bool
 }
 
-type HealthcheckServer struct {
+type Server struct {
 	server    *http.Server
 	appStatus AppStatus
 	logger    log.MetaLogger
 	port      int
 }
 
-func NewHealthcheckServer(logger log.MetaLogger, port int, appStatus AppStatus) *HealthcheckServer {
-	health := &HealthcheckServer{appStatus: appStatus, logger: logger, port: port}
+func New(logger log.MetaLogger, port int, appStatus AppStatus) *Server {
+	health := &Server{appStatus: appStatus, logger: logger, port: port}
 	router := http.NewServeMux()
 	router.HandleFunc("GET /ready", health.ReadyHandler)
 	router.HandleFunc("GET /alive", health.AliveHandler)
@@ -38,7 +38,7 @@ func NewHealthcheckServer(logger log.MetaLogger, port int, appStatus AppStatus) 
 	return health
 }
 
-func (s *HealthcheckServer) Run() error {
+func (s *Server) Run() error {
 	s.logger.Info("starting healthcheck server",
 		log.Bool("tls", false),
 		log.Int("port", s.port),
@@ -54,14 +54,14 @@ func (s *HealthcheckServer) Run() error {
 	return nil
 }
 
-func (s *HealthcheckServer) Shutdown(ctx context.Context) error {
+func (s *Server) Shutdown(ctx context.Context) error {
 	if err := s.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 	return nil
 }
 
-func (s *HealthcheckServer) ReadyHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 
@@ -72,7 +72,7 @@ func (s *HealthcheckServer) ReadyHandler(w http.ResponseWriter, r *http.Request)
 	}
 }
 
-func (s *HealthcheckServer) AliveHandler(w http.ResponseWriter, r *http.Request) {
+func (s *Server) AliveHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 
