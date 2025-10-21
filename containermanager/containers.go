@@ -27,6 +27,7 @@ import (
 
 	"github.com/bhmj/goblocks/file"
 	"github.com/bhmj/goblocks/log"
+	cerrdefs "github.com/containerd/errdefs"
 	dockercontainer "github.com/docker/docker/api/types/container"
 	dockerimage "github.com/docker/docker/api/types/image"
 	dockermount "github.com/docker/docker/api/types/mount"
@@ -35,8 +36,11 @@ import (
 	dockerclient "github.com/docker/docker/client"
 )
 
+const (
+	statsPeriod = 200 * time.Millisecond
+)
+
 var (
-	statsPeriod              = 200 * time.Millisecond
 	errContainerLimitCPU     = errors.New("CPU limit exceeded")
 	errContainerLimitNet     = errors.New("network limit exceeded")
 	errContainerLimitTime    = errors.New("run time limit exceeded")
@@ -182,14 +186,14 @@ func (cm *containerManager) ImageExist(image string) error {
 			}
 		}
 	}
-	return fmt.Errorf("docker image not found, consider creating or pulling: %s", image)
+	return fmt.Errorf("docker image not found, consider creating or pulling: %s", image) //nolint:err113
 }
 
-// containerExists returns true if container exists in registry.
-func (cm *containerManager) ContainerExist(ID string) bool {
+// ContainerExist returns true if container exists in registry.
+func (cm *containerManager) ContainerExist(id string) bool {
 	cm.RLock()
 	defer cm.RUnlock()
-	if _, found := cm.containers[ID]; found {
+	if _, found := cm.containers[id]; found {
 		return true
 	}
 	return false
@@ -203,15 +207,16 @@ func (cm *containerManager) registerContainer(containerID string) {
 }
 
 // unregisterContainer removes a container info from registry.
-func (cm *containerManager) unregisterContainer(ID string) {
+func (cm *containerManager) unregisterContainer(id string) {
 	cm.Lock()
 	defer cm.Unlock()
-	delete(cm.containers, ID)
+	delete(cm.containers, id)
 }
 
 // CreateAndRunContainer creates and runs the container in sleep mode. Returns ID of a confirmed running container.
-func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string, error) {
-	var mounts []dockermount.Mount
+func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string, error) { //nolint:funlen
+	const MBytes = 1024 * 1024
+	var mounts []dockermount.Mount //nolint:prealloc
 
 	// create working dir if not exists
 	err := file.Mkdir(setup.WorkingDir)
@@ -232,7 +237,8 @@ func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string
 		mounts = append(mounts, dockermount.Mount{
 			Type: dockermount.TypeTmpfs,
 			TmpfsOptions: &dockermount.TmpfsOptions{
-				SizeBytes: int64(setup.TmpDir) * 1024 * 1024, // Mb to bytes
+				// Mb to bytes
+				SizeBytes: int64(setup.TmpDir) * MBytes, //nolint:gosec
 			},
 			Target: "/tmp/",
 		})
@@ -279,9 +285,10 @@ func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string
 		Mounts:         mounts,
 		NetworkMode:    dockercontainer.NetworkMode(netMode),
 		Resources: dockercontainer.Resources{
-			NanoCPUs:   int64(setup.CPUs) * 1000000,    // mCPUs to nCPUs
-			Memory:     int64(setup.RAM) * 1024 * 1024, // Mb
-			MemorySwap: int64(setup.RAM) * 1024 * 1024, // Mb
+			// mCPUs to nCPUs
+			NanoCPUs:   int64(setup.CPUs) * 1000000, //nolint:gosec,mnd
+			Memory:     int64(setup.RAM) * MBytes,   //nolint:gosec
+			MemorySwap: int64(setup.RAM) * MBytes,   //nolint:gosec
 		},
 	}
 
@@ -302,7 +309,7 @@ func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string
 
 	// Wait until ready
 	for {
-		time.Sleep(20 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond) //nolint:mnd
 		// TODO: timeout
 		containerState, err := cm.cli.ContainerInspect(ctx, resp.ID)
 		if err != nil {
@@ -377,11 +384,11 @@ func (cm *containerManager) Execute(containerID string, commands []string, pipe 
 func (cm *containerManager) getCurrentStats(containerID string) (uint64, uint64, error) {
 	stats, err := cm.cli.ContainerStatsOneShot(context.Background(), containerID)
 	if err != nil {
-		return 0, 0, fmt.Errorf("ContainerStats: %v", err)
+		return 0, 0, fmt.Errorf("ContainerStats: %w", err)
 	}
 	var containerStats dockercontainer.StatsResponse
 	if err := json.NewDecoder(stats.Body).Decode(&containerStats); err != nil {
-		return 0, 0, fmt.Errorf("decode stats: %v", err)
+		return 0, 0, fmt.Errorf("decode stats: %w", err)
 	}
 	startCPU := containerStats.CPUStats.CPUUsage.TotalUsage
 	startNet := containerStats.Networks["eth0"].TxBytes + containerStats.Networks["eth0"].RxBytes
@@ -416,13 +423,13 @@ func (cm *containerManager) WaitForIdle(containerID string, timeout time.Duratio
 		state, found := cm.containers[containerID]
 		cm.RUnlock()
 		if !found {
-			return fmt.Errorf("container not found")
+			return errors.New("container not found")
 		}
 		if state == containerStateIdle {
 			return nil
 		}
 		if time.Since(start) > timeout {
-			return fmt.Errorf("timeout waiting for container to be idle")
+			return errors.New("timeout waiting for container to be idle")
 		}
 	}
 }
@@ -445,7 +452,7 @@ func (cm *containerManager) createExecutor(containerID string, commands []string
 	// ContainerExecCreate creates process but does not start it
 	execResp, err := cm.cli.ContainerExecCreate(context.Background(), containerID, execConfig)
 	if err != nil {
-		return "", fmt.Errorf("ContainerExecCreate: %v", err) // "container not found" is handled by caller
+		return "", fmt.Errorf("ContainerExecCreate: %w", err) // "container not found" is handled by caller
 	}
 	return execResp.ID, nil
 }
@@ -454,10 +461,16 @@ func (cm *containerManager) createExecutor(containerID string, commands []string
 // that on exit the exec process is either successfully stopped or terminating.
 // Returns exit code + error.
 func (cm *containerManager) execAttach(containerID, execID string, pipe ContainerPipe, limits RuntimeLimits) (int, error) {
+	const (
+		million            = 1000000
+		codeContainerError = 300
+		codeResourceLimit  = 301
+	)
+
 	// ContainerExecAttach actually starts execution
 	execAttachResp, err := cm.cli.ContainerExecAttach(context.Background(), execID, dockercontainer.ExecStartOptions{})
 	if err != nil {
-		return 0, fmt.Errorf("ContainerExecAttach: %v", err)
+		return 0, fmt.Errorf("ContainerExecAttach: %w", err)
 	}
 	defer execAttachResp.Close()
 
@@ -491,20 +504,20 @@ outer:
 					close(stopStreaming)
 				}
 				go cm.StopContainer(containerID, false)
-				pipe.Consumed <- ConsumedResources{CPUTime: (curCPU - startCPU) / 1000000, Net: curNet - startNet} // ns -> msec, bytes
-				return 301, err
+				pipe.Consumed <- ConsumedResources{CPUTime: (curCPU - startCPU) / million, Net: curNet - startNet} // ns -> msec, bytes
+				return codeResourceLimit, err
 			}
 		}
 	}
 
 	curCPU, curNet, _ = cm.checkLimits(containerID, startTime, startCPU, startNet, limits)
-	pipe.Consumed <- ConsumedResources{CPUTime: (curCPU - startCPU) / 1000000, Net: curNet - startNet} // ns -> msec, bytes
+	pipe.Consumed <- ConsumedResources{CPUTime: (curCPU - startCPU) / million, Net: curNet - startNet} // ns -> msec
 
 	// Wait for the exec instance to finish (TODO: loop waiting!)
 	resp, err := cm.cli.ContainerExecInspect(context.Background(), execID)
 	if err != nil {
 		cm.logger.Error("ContainerExecInspect", log.Error(err))
-		return 300, err
+		return codeContainerError, err
 	}
 
 	go cm.teardown(containerID)
@@ -529,14 +542,14 @@ func (cm *containerManager) grepLogs(containerID string, needle string, timeout 
 		scanner := bufio.NewScanner(logs)
 		for scanner.Scan() {
 			line := scanner.Text()
-			fmt.Println("Log:", line)
+			cm.logger.Info("log", log.String("line", line))
 			if strings.Contains(line, needle) {
 				found <- true
 				return
 			}
 		}
-		if err := scanner.Err(); err != nil && err != io.EOF {
-			fmt.Println("Error reading logs:", err)
+		if err := scanner.Err(); err != nil && errors.Is(err, io.EOF) {
+			cm.logger.Error("reading container logs", log.String("containerID", containerID), log.Error(err))
 		}
 	}()
 
@@ -576,7 +589,7 @@ func (cm *containerManager) killAll(containerID string) {
 		if !resp.Running {
 			done = true
 		} else {
-			time.Sleep(50 * time.Millisecond) //nolint:gomnd
+			time.Sleep(50 * time.Millisecond) //nolint:mnd
 		}
 	}
 }
@@ -606,8 +619,8 @@ func (cm *containerManager) checkLimits(containerID string, startTime time.Time,
 	if (currentNet-startNet)/1024/1024 > uint64(limits.Net) {
 		return currentCPU, currentNet, errContainerLimitNet
 	}
-	if timeElapsed > time.Duration(limits.RunTime)*time.Second {
-		return currentCPU, currentNet, fmt.Errorf("%w: elapsed=%v, limit=%v", errContainerLimitTime, timeElapsed, time.Duration(limits.RunTime)*time.Second)
+	if timeElapsed > time.Duration(limits.RunTime)*time.Second { //nolint:gosec
+		return currentCPU, currentNet, fmt.Errorf("%w: elapsed=%v, limit=%v", errContainerLimitTime, timeElapsed, time.Duration(limits.RunTime)*time.Second) //nolint:gosec
 	}
 	return currentCPU, currentNet, nil
 }
@@ -619,7 +632,7 @@ func (cm *containerManager) ensureVolume(name string) error {
 		// volume exists
 		return nil
 	}
-	if dockerclient.IsErrNotFound(err) {
+	if cerrdefs.IsNotFound(err) {
 		// create volume
 		_, err = cm.cli.VolumeCreate(context.Background(), dockervolume.CreateOptions{Name: name})
 		if err != nil {
@@ -629,6 +642,8 @@ func (cm *containerManager) ensureVolume(name string) error {
 	}
 	return fmt.Errorf("volume inspect: %w", err)
 }
+
+const bufLength = 120 * 1024
 
 // streamOutput reads data from buffered IO reader and forwards it into [stdoutCh] and [stderrCh]. Closes [done] on finish.
 func (cm *containerManager) streamOutput(
@@ -641,14 +656,14 @@ func (cm *containerManager) streamOutput(
 ) {
 	defer close(doneCh)
 
-	min := func(a, b int) int {
+	minOf := func(a, b int) int {
 		if a < b {
 			return a
 		}
 		return b
 	}
-	header := make([]byte, 8)
-	buf := make([]byte, 120*1024) // 6-bit divisible (base64)
+	header := make([]byte, 8)      //nolint:mnd
+	buf := make([]byte, bufLength) // 6-bit divisible (base64)
 	for {
 		// first read frame header (8 bytes)
 		n, err := io.ReadFull(r, header)
@@ -662,9 +677,8 @@ func (cm *containerManager) streamOutput(
 		streamType := int(header[0])
 		dataLen := int(binary.BigEndian.Uint32(header[4:8]))
 		// read frame into buf (possibly in parts) and flush it into corresponding channel
-		n = 0
 		for i := 0; i < dataLen; i += n {
-			buf = buf[:min(cap(buf), dataLen-i)] // no more than buf capacity
+			buf = buf[:minOf(cap(buf), dataLen-i)] // no more than buf capacity
 			n, err = r.Read(buf)
 			if err != nil {
 				if err != io.EOF {
@@ -674,9 +688,9 @@ func (cm *containerManager) streamOutput(
 			}
 			var ch chan []byte
 			switch streamType {
-			case 1: // stdout
+			case 1:
 				ch = stdoutCh
-			case 2: // stderr
+			case 2: //nolint:mnd
 				ch = stderrCh
 			}
 			b := append([]byte{}, buf[:n]...)

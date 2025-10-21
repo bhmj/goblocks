@@ -57,7 +57,7 @@ func InitListener(cfg Config) (net.Listener, error) {
 
 // newListener creates and configures net.Listener
 func newListener(lnConfig *ListenerConfig) (net.Listener, error) {
-	ln, err := net.Listen("tcp", lnConfig.Address)
+	ln, err := net.Listen("tcp", lnConfig.Address) //nolint:noctx
 	if err != nil {
 		return nil, fmt.Errorf("listener: %w", err)
 	}
@@ -156,7 +156,7 @@ func (cg *CertificateGetter) Load() error {
 	return nil
 }
 
-func (cg *CertificateGetter) GetCertificate(clientHello *tls.ClientHelloInfo) (*tls.Certificate, error) {
+func (cg *CertificateGetter) GetCertificate(_ *tls.ClientHelloInfo) (*tls.Certificate, error) {
 	if cg.cert == nil {
 		return nil, errNilCertificate
 	}

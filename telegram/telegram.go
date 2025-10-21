@@ -39,7 +39,7 @@ func (t *tg) Run(ctx context.Context) error {
 
 	errCh := make(chan error, 1)
 	go func() {
-		err := http.ListenAndServe(fmt.Sprintf(":%d", t.port), nil)
+		err := http.ListenAndServe(fmt.Sprintf(":%d", t.port), nil) //nolint:gosec
 		if !errors.Is(err, http.ErrServerClosed) {
 			t.logger.Info("TG webhook server closed", log.Error(err))
 			err = nil
@@ -59,17 +59,17 @@ func (t *tg) Message(message string) *Message {
 	return t.createMessage(message)
 }
 
-func (t *tg) WebhookHandler(w http.ResponseWriter, r *http.Request) {
+func (t *tg) WebhookHandler(_ http.ResponseWriter, r *http.Request) {
 	var update Update
 	if err := json.NewDecoder(r.Body).Decode(&update); err != nil {
 		t.logger.Error("Error decoding update", log.Error(err))
 		return
 	}
 
-	if update.CallbackQuery != nil {
+	if update.CallbackQuery != nil { //nolint:nestif
 		data := update.CallbackQuery.Data
 		parts := strings.Split(data, ":")
-		if len(parts) == 2 {
+		if len(parts) == 2 { //nolint:mnd
 			msgID, _ := strconv.Atoi(parts[0])
 			iBtn, _ := strconv.Atoi(parts[1])
 			//
@@ -78,6 +78,7 @@ func (t *tg) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 			if success {
 				message := update.CallbackQuery.Message.Text
 				err := t.appendMessage(
+					r.Context(),
 					update.CallbackQuery.Message.Chat.ID,
 					update.CallbackQuery.Message.MessageID,
 					message,
@@ -90,7 +91,10 @@ func (t *tg) WebhookHandler(w http.ResponseWriter, r *http.Request) {
 			} else {
 				done = "Error"
 			}
-			t.answerCallbackQuery(update.CallbackQuery.ID, done, !success)
+			err := t.answerCallbackQuery(r.Context(), update.CallbackQuery.ID, done, !success)
+			if err != nil {
+				t.logger.Error("answerCallbackQuery", log.Error(err))
+			}
 		}
 	}
 }
@@ -106,7 +110,7 @@ func (t *tg) AddCallback(messageID int64, fn UserCallback) {
 	t.callbacks[messageID] = a
 }
 
-func (t *tg) SendMessage(message string, chatID int64, parseMode string, replyMarkup *InlineKeyboardMarkup) error {
+func (t *tg) SendMessage(ctx context.Context, message string, chatID int64, parseMode string, replyMarkup *InlineKeyboardMarkup) error {
 	if chatID == 0 {
 		chatID = t.chatID
 	}
@@ -125,7 +129,7 @@ func (t *tg) SendMessage(message string, chatID int64, parseMode string, replyMa
 		payload["reply_markup"] = replyMarkup
 	}
 
-	return t.send("sendMessage", payload)
+	return t.send(ctx, "sendMessage", payload)
 }
 
 func (t *tg) createMessage(message string) *Message {
@@ -155,7 +159,7 @@ func (t *tg) callback(messageID int64, iButton int) (string, bool) {
 	return "", true // empty callback
 }
 
-func (t *tg) send(method string, payload map[string]any) error {
+func (t *tg) send(ctx context.Context, method string, payload map[string]any) error {
 	apiURL := fmt.Sprintf("https://api.telegram.org/bot%s/%s", t.botToken, method)
 
 	jsonPayload, err := json.Marshal(payload)
@@ -163,7 +167,7 @@ func (t *tg) send(method string, payload map[string]any) error {
 		return fmt.Errorf("failed to marshal JSON payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(jsonPayload))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, apiURL, bytes.NewBuffer(jsonPayload))
 	if err != nil {
 		return fmt.Errorf("failed to create HTTP request: %w", err)
 	}
@@ -182,10 +186,9 @@ func (t *tg) send(method string, payload map[string]any) error {
 		return fmt.Errorf("non-200 response: %s, Body: %s", resp.Status, string(buf))
 	}
 	return nil
-
 }
 
-func (t *tg) answerCallbackQuery(queryID string, message string, alert bool) error {
+func (t *tg) answerCallbackQuery(ctx context.Context, queryID string, message string, alert bool) error {
 	payload := map[string]any{
 		"callback_query_id": queryID,
 	}
@@ -196,10 +199,10 @@ func (t *tg) answerCallbackQuery(queryID string, message string, alert bool) err
 		payload["show_alert"] = true
 	}
 
-	return t.send("answerCallbackQuery", payload)
+	return t.send(ctx, "answerCallbackQuery", payload)
 }
 
-func (t *tg) appendMessage(chatID int64, messageID int, text, appendix string, entities *[]MessageEntity) error {
+func (t *tg) appendMessage(ctx context.Context, chatID int64, messageID int, text, appendix string, entities *[]MessageEntity) error {
 	payload := map[string]any{
 		"chat_id":    chatID,
 		"message_id": messageID,
@@ -208,5 +211,5 @@ func (t *tg) appendMessage(chatID int64, messageID int, text, appendix string, e
 	if entities != nil {
 		payload["entities"] = entities
 	}
-	return t.send("editMessageText", payload)
+	return t.send(ctx, "editMessageText", payload)
 }

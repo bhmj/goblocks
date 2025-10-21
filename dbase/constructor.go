@@ -11,7 +11,7 @@ import (
 )
 
 type Config struct {
-	Type       string `yaml:"type" description:"DB type" default:"postgres" choice:"postgres,mysql,sqlite,oracle,sqlserver"` // nolint:staticcheck
+	Type       string `yaml:"type" description:"DB type" default:"postgres" choice:"postgres,mysql,sqlite,oracle,sqlserver"`
 	ConnString string `yaml:"conn_string" description:"DB connection string" required:"true"`
 	Migrations string `yaml:"migrations" description:"DB migrations path"`
 }
@@ -37,8 +37,8 @@ func New(ctx context.Context, logger log.MetaLogger, cfg Config, options ...int)
 	}
 
 	// dumb
-	delay := 300 * time.Millisecond // nolint:gomnd
-	for i := 0; i < 20; i++ {
+	delay := 300 * time.Millisecond //nolint:mnd
+	for range 20 {
 		db, err = postgresql.New(ctx, cfg.ConnString) // establishes one connection!
 		if err != nil {
 			logger.Error("postgresql.New", log.Error(err), log.String("dbname", dbName))

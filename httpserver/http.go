@@ -8,14 +8,12 @@ import (
 	"net/http"
 	"time"
 
-	"golang.org/x/time/rate"
-
-	sentryhttp "github.com/getsentry/sentry-go/http"
-
 	"github.com/bhmj/goblocks/apiauth"
 	"github.com/bhmj/goblocks/apiauth/token"
 	"github.com/bhmj/goblocks/log"
 	"github.com/bhmj/goblocks/metrics"
+	sentryhttp "github.com/getsentry/sentry-go/http"
+	"golang.org/x/time/rate"
 )
 
 // Router implements a basic router interface. Currently in this repo
@@ -119,7 +117,7 @@ func (s *httpserver) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), s.cfg.ShutdownTimeout)
 		defer cancel()
-		err := s.server.Shutdown(ctx)
+		err := s.server.Shutdown(ctx) //nolint:contextcheck
 		if err != nil {
 			s.logger.Error("failed to shutdown server", log.String("name", s.name), log.Error(err))
 		}

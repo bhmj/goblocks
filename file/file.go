@@ -13,7 +13,7 @@ import (
 	"github.com/bhmj/goblocks/str"
 )
 
-type FileInterface interface {
+type FileInterface interface { //nolint:revive
 	Exists(fname string) bool
 	Copy(src, dest string) (int64, error)
 	Delete(fname string) error
@@ -39,7 +39,7 @@ func Exists(fname string) bool {
 func Copy(src, dest string) (int64, error) {
 	sourceFileStat, err := os.Stat(src)
 	if err != nil {
-		return 0, err // nolint:wrapcheck
+		return 0, err //nolint:wrapcheck
 	}
 
 	if !sourceFileStat.Mode().IsRegular() {
@@ -48,22 +48,22 @@ func Copy(src, dest string) (int64, error) {
 
 	source, err := os.Open(src)
 	if err != nil {
-		return 0, err // nolint:wrapcheck
+		return 0, err //nolint:wrapcheck
 	}
 	defer source.Close()
 
 	dir := filepath.Dir(dest)
 	if err := Mkdir(dir); err != nil {
-		return 0, err // nolint:wrapcheck
+		return 0, err //nolint:wrapcheck
 	}
 
 	destination, err := os.Create(dest)
 	if err != nil {
-		return 0, err // nolint:wrapcheck
+		return 0, err //nolint:wrapcheck
 	}
 	defer destination.Close()
 	nBytes, err := io.Copy(destination, source)
-	return nBytes, err // nolint:wrapcheck
+	return nBytes, err //nolint:wrapcheck
 }
 
 func Delete(fname string) error {
@@ -74,7 +74,7 @@ func Delete(fname string) error {
 }
 
 func Mkdir(path string) error {
-	return os.MkdirAll(path, os.ModePerm) // nolint:wrapcheck
+	return os.MkdirAll(path, os.ModePerm) //nolint:wrapcheck
 }
 
 func Rmdir(path string) error {
@@ -98,7 +98,7 @@ func GenerateRandomFilename(url, root, path string) (string, string, error) {
 	var fullName string
 	ext := URLFileExtension(url)
 	for {
-		fname = strings.ReplaceAll(time.Now().Format("15-04-05.000"), ".", "-") + "-" + str.RandomString(4) // nolint:gomnd
+		fname = strings.ReplaceAll(time.Now().Format("15-04-05.000"), ".", "-") + "-" + str.RandomString(4) //nolint:mnd
 		fullName = filepath.Join(root, path, fname+ext)
 		if !Exists(fullName) {
 			break
@@ -107,7 +107,7 @@ func GenerateRandomFilename(url, root, path string) (string, string, error) {
 	return filepath.Join(path, fname+ext), fname + ext, nil // external filename (web)
 }
 
-func Read(fname string) (contents []byte, err error) {
+func Read(fname string) ([]byte, error) {
 	file, err := os.Open(fname)
 	if err != nil {
 		return nil, err
@@ -127,8 +127,8 @@ func TouchWithPath(fname string, template string) error {
 	if Exists(fname) {
 		return nil
 	}
-	Copy(template, fname)
-	return nil
+	_, err := Copy(template, fname)
+	return err
 }
 
 func ClearDirectory(path string, flat bool) error {

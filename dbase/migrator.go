@@ -1,10 +1,9 @@
 package dbase
 
 import (
-	"crypto/sha1" // nolint:gosec
+	"crypto/sha1" //nolint:gosec
 	"encoding/hex"
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,20 +14,18 @@ import (
 	"github.com/bhmj/goblocks/log"
 )
 
-var (
-	errMigrationDirNotFound = errors.New("migration dir not found")
-)
+var errMigrationDirNotFound = errors.New("migration dir not found")
 
-type migrator struct {
+type Migrator struct {
 	logger log.MetaLogger
 	db     abstract.DB
 }
 
-func NewMigrator(db abstract.DB, logger log.MetaLogger) *migrator {
-	return &migrator{db: db, logger: logger}
+func NewMigrator(db abstract.DB, logger log.MetaLogger) *Migrator {
+	return &Migrator{db: db, logger: logger}
 }
 
-func (m *migrator) Migrate(basePath string) error {
+func (m *Migrator) Migrate(basePath string) error {
 	var err error
 
 	if basePath == "" {
@@ -55,7 +52,7 @@ func (m *migrator) Migrate(basePath string) error {
 	return nil
 }
 
-func (m *migrator) assureMigrationSupported() error {
+func (m *Migrator) assureMigrationSupported() error {
 	var result bool
 	sql := `select exists (
 		select from information_schema.tables 
@@ -64,7 +61,7 @@ func (m *migrator) assureMigrationSupported() error {
 	);`
 	err := m.db.QueryValue(&result, sql)
 	if err != nil {
-		return err // nolint:wrapcheck
+		return err //nolint:wrapcheck
 	}
 	if !result {
 		sql = `create table public.schema_migrations (
@@ -77,13 +74,13 @@ func (m *migrator) assureMigrationSupported() error {
 		)`
 		err = m.db.Exec(sql)
 		if err != nil {
-			return err // nolint:wrapcheck
+			return err //nolint:wrapcheck
 		}
 	}
 	return nil
 }
 
-func (m *migrator) processFilesIn(basePath, inPath string) error {
+func (m *Migrator) processFilesIn(basePath, inPath string) error {
 	var err error
 
 	fullPath := filepath.Join(basePath, inPath)
@@ -117,7 +114,7 @@ func (m *migrator) processFilesIn(basePath, inPath string) error {
 	return nil
 }
 
-func (m *migrator) applyMigration(basePath, file string) error {
+func (m *Migrator) applyMigration(basePath, file string) error {
 	fullPath := filepath.Join(basePath, file)
 	// read file contents
 	contents, err := m.readFileContents(fullPath)
@@ -125,21 +122,21 @@ func (m *migrator) applyMigration(basePath, file string) error {
 		return err
 	}
 	// calc hash
-	sha1 := sha1.Sum(contents) // nolint:gosec
+	sha1 := sha1.Sum(contents) //nolint:gosec
 
 	// find file record in schema_migrations
 	var found bool
 	sql := `select exists (select from public.schema_migrations where hash = $1)`
 	err = m.db.QueryValue(&found, sql, sha1[:])
 	if err != nil {
-		return err // nolint:wrapcheck
+		return err //nolint:wrapcheck
 	}
 	if !found {
-		fmt.Println(hex.EncodeToString(sha1[:]))
+		m.logger.Info("migrator", log.String("new hash", hex.EncodeToString(sha1[:])))
 		tx, err := m.db.BeginTransaction()
 		if err != nil {
-			m.logger.Error("migrator: transaction", log.Error(err))
-			return err // nolint:wrapcheck
+			m.logger.Error("migrator", log.String("db", "transaction"), log.Error(err))
+			return err //nolint:wrapcheck
 		}
 		defer func() { _ = tx.Rollback() }()
 
@@ -147,7 +144,7 @@ func (m *migrator) applyMigration(basePath, file string) error {
 		err = tx.Exec(string(contents))
 		if err != nil {
 			m.logger.Error("failed", log.String("error", err.Error()), log.String("file", file))
-			return err // nolint:wrapcheck
+			return err //nolint:wrapcheck
 		}
 		// store hash
 		sql := `
@@ -157,7 +154,7 @@ func (m *migrator) applyMigration(basePath, file string) error {
 				hash = excluded.hash`
 		err = tx.Exec(sql, filepath.Base(file), sha1[:])
 		if err != nil {
-			return err // nolint:wrapcheck
+			return err //nolint:wrapcheck
 		}
 		m.logger.Info("applied file", log.String("file", file))
 
@@ -166,16 +163,16 @@ func (m *migrator) applyMigration(basePath, file string) error {
 	return nil
 }
 
-func (m *migrator) readFileContents(file string) ([]byte, error) {
+func (m *Migrator) readFileContents(file string) ([]byte, error) {
 	f, err := os.Open(file)
 	if err != nil {
-		return nil, err // nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	defer f.Close()
 
 	b, err := io.ReadAll(f)
 	if err != nil {
-		return nil, err // nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 	return b, nil
 }

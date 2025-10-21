@@ -2,7 +2,7 @@ package retry
 
 import (
 	"math"
-	"math/rand"
+	"math/rand/v2"
 	"time"
 )
 
@@ -16,7 +16,6 @@ type Policy struct {
 }
 
 const (
-	// default vaules equal to those in monolith
 	defaultAttempts   = 5
 	defaultBackoff    = 500 * time.Millisecond
 	defaultMultiplier = 2
@@ -70,7 +69,7 @@ func (p *Policy) Run(fn func(attempt int) (err error, fatal error)) error {
 }
 
 func (p *Policy) calcSleepTime(attempt int) time.Duration {
-	jitter := time.Duration(rand.Float64() * float64(p.Jitter))
+	jitter := time.Duration(rand.Float64() * float64(p.Jitter)) //nolint:gosec
 	sleepTime := time.Duration(float64(p.Backoff)*math.Pow(p.Multiplier, float64(attempt-1))) + jitter
 	if sleepTime > p.MaxBackoff {
 		sleepTime = p.MaxBackoff

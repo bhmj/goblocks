@@ -1,0 +1,72 @@
+version: "2"
+run:
+  tests: false
+linters:
+  default: all
+  disable:
+    - embeddedstructfieldcheck   # too opinionated
+    - err113                     # will fix later
+    - exhaustruct                # I don't declare default fields!
+    - exhaustive                 # missing cases in switch are deliberate
+    - funcorder                  # my code, my order
+    - godox                      # I need TODOs
+    - godot                      # too opinionated
+    - ireturn                    # I don't care for returning interfaces. It's easier this way
+    - noinlineerr                # my code, my inlining
+    - nlreturn                   # too opinionated
+    - tagalign                   # too opinionated
+    - varnamelen                 # I decide if the variable name is long enough
+    - wrapcheck                  # will fix later
+    - wsl                        # deprecated
+    - wsl_v5                     # too opinionated
+  settings:
+    funlen:
+      lines: 80
+      statements: 60
+    depguard:
+      rules:
+        main:
+          deny:
+            - pkg: "math/rand$"
+              desc: use math/rand/v2
+            - pkg: "github.com/sirupsen/logrus"
+              desc: not allowed
+            - pkg: "github.com/pkg/errors"
+              desc: Should be replaced by standard lib errors package
+    lll:
+      line-length: 180
+    cyclop:
+      max-complexity: 15
+    tagliatelle:
+      # check the struck tag name case
+      case:
+        # use the struct field name to check the name of the struct tag
+        rules:
+          # any struct tag type can be used.
+          # support string case: `camel`, `pascal`, `kebab`, `snake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`
+          json: snake
+          yaml: snake
+        use-field-name: true
+  exclusions:
+    generated: lax
+    presets:
+      - comments
+      - common-false-positives
+      - legacy
+      - std-error-handling
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
+    - gci
+    - gofmt
+    - gofumpt
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

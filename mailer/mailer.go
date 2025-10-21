@@ -36,7 +36,6 @@ func NewMailer(cfg Config) Mailer {
 }
 
 func (m *mailer) SendMailHTML(to, subject, body string) error {
-
 	headers := map[string]string{
 		"From":         m.From,
 		"To":           to,

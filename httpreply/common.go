@@ -46,12 +46,12 @@ func JSONCode(w http.ResponseWriter, str []byte, code int) (int, error) {
 }
 
 func Object(w http.ResponseWriter, obj any) (int, error) {
-	buf, _ := json.Marshal(obj)
+	buf, _ := json.Marshal(obj) //nolint:errchkjson
 	return Reply(w, http.StatusOK, "application/json", buf)
 }
 
 func ObjectCode(w http.ResponseWriter, obj any, code int) (int, error) {
-	buf, _ := json.Marshal(obj)
+	buf, _ := json.Marshal(obj) //nolint:errchkjson
 	return Reply(w, code, "application/json", buf)
 }
 

@@ -1,12 +1,12 @@
 package str
 
-import "math/rand"
+import "math/rand/v2"
 
 func RandomString(n int) string {
 	chars := []byte("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789")
 	s := []byte{}
-	for i := 0; i < n; i++ {
-		s = append(s, chars[rand.Intn(len(chars))]) // nolint:gosec
+	for range n {
+		s = append(s, chars[rand.IntN(len(chars))]) //nolint:gosec
 	}
 	return string(s)
 }

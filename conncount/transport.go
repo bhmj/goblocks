@@ -24,8 +24,8 @@ type Transport struct {
 type dialer func(ctx context.Context, network string, addr string) (net.Conn, error)
 
 // NewTransport creates Transport with a connection counter.
-// prev is a Transport to be wrapped
-// callback is a function to be called when connection counter changes
+// prev is a Transport to be wrapped.
+// callback is a function to be called when connection counter changes.
 func NewTransport(logger log.MetaLogger, prev *http.Transport, callback func(int64)) *Transport {
 	var counter int64
 	tran := &Transport{Transport: prev, connCounter: &counter}
@@ -54,8 +54,8 @@ func NewTransport(logger log.MetaLogger, prev *http.Transport, callback func(int
 			return instrumentedConn, nil
 		}
 	}
-	tran.Transport.DialContext = dialWithCounter(prevDialer)
-	tran.Transport.DialTLSContext = dialWithCounter(prevTLSDialer)
+	tran.DialContext = dialWithCounter(prevDialer)
+	tran.DialTLSContext = dialWithCounter(prevTLSDialer)
 	return tran
 }
 
@@ -64,7 +64,7 @@ func (tran *Transport) getPreviousDialer() func(ctx context.Context, network, ad
 		return tran.DialContext
 	}
 	if tran.Dial != nil {
-		return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return func(_ context.Context, network, addr string) (net.Conn, error) {
 			return tran.Dial(network, addr) //nolint:wrapcheck
 		}
 	}
@@ -77,7 +77,7 @@ func (tran *Transport) getPreviousTLSDialer() func(ctx context.Context, network,
 		return tran.DialTLSContext
 	}
 	if tran.DialTLS != nil {
-		return func(ctx context.Context, network, addr string) (net.Conn, error) {
+		return func(_ context.Context, network, addr string) (net.Conn, error) {
 			return tran.DialTLS(network, addr) //nolint:wrapcheck
 		}
 	}

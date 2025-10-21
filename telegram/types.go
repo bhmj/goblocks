@@ -54,7 +54,7 @@ type CallbackQuery struct {
 	Data    string          `json:"data"`
 }
 
-type TelegramMessage struct {
+type TelegramMessage struct { //nolint:revive
 	MessageID int              `json:"message_id"`
 	Text      string           `json:"text"`
 	Chat      Chat             `json:"chat"`

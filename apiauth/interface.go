@@ -2,7 +2,7 @@ package apiauth
 
 import "net/http"
 
-// Authentication provider.
+// Auth is authentication provider
 type Auth interface {
 	Authorized(req *http.Request) error
 }

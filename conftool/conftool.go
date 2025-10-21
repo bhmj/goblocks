@@ -77,7 +77,7 @@ func parseRead(f io.Reader, decoder unmarshaller, cfg any) error {
 func defaultsAndRequired(cfg any) error {
 	reqs := defsAndReqs(cfg)
 	if len(reqs) > 0 {
-		return fmt.Errorf("required config parameters not set: %s", strings.Join(reqs, ", "))
+		return fmt.Errorf("required config parameters not set: %s", strings.Join(reqs, ", ")) //nolint:err113
 	}
 	return nil
 }
@@ -87,12 +87,12 @@ func defsAndReqs(cfg any) []string {
 	val := reflect.ValueOf(cfg).Elem()
 	typ := val.Type()
 
-	for i := 0; i < val.NumField(); i++ {
+	for i := range val.NumField() {
 		field := val.Field(i)
 		fieldType := typ.Field(i)
 
 		// Set the default value based on the field kind
-		if field.Kind() == reflect.Struct {
+		if field.Kind() == reflect.Struct { //nolint:nestif
 			// If it's a struct, recurse
 			reqs = append(reqs, defsAndReqs(field.Addr().Interface())...)
 		} else if field.CanSet() {
@@ -101,11 +101,7 @@ func defsAndReqs(cfg any) []string {
 				continue
 			}
 			// Check if the field has a `required` tag
-			isRequired := false
-			required, ok := fieldType.Tag.Lookup("required")
-			if ok && required == "true" {
-				isRequired = true
-			}
+			isRequired := isFieldRequired(fieldType)
 			// Check if the field has a `default` tag
 			defaultValue, hasDefault := fieldType.Tag.Lookup("default")
 			if !hasDefault {
@@ -115,39 +111,18 @@ func defsAndReqs(cfg any) []string {
 				continue
 			}
 
-			switch field.Kind() {
-			case reflect.String:
-				field.SetString(defaultValue)
-			case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-				intValue, err := strconv.ParseInt(defaultValue, 10, 64)
-				if err != nil {
-					errSyntax := strconv.ErrSyntax
-					if errors.Is(err, errSyntax) {
-						dur, err := time.ParseDuration(defaultValue)
-						if err == nil {
-							field.SetInt(int64(dur))
-						}
-					}
-				} else {
-					field.SetInt(intValue)
-				}
-
-			case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-				if uintValue, err := strconv.ParseUint(defaultValue, 10, 64); err == nil {
-					field.SetUint(uintValue)
-				}
-			case reflect.Float32, reflect.Float64:
-				if floatValue, err := strconv.ParseFloat(defaultValue, 64); err == nil {
-					field.SetFloat(floatValue)
-				}
-			case reflect.Bool:
-				if boolValue, err := strconv.ParseBool(defaultValue); err == nil {
-					field.SetBool(boolValue)
-				}
-			}
+			setField(field, defaultValue)
 		}
 	}
 	return reqs
+}
+
+func isFieldRequired(field reflect.StructField) bool {
+	required, ok := field.Tag.Lookup("required")
+	if ok && required == "true" {
+		return true
+	}
+	return false
 }
 
 func isFieldEmpty(v reflect.Value) bool {
@@ -161,5 +136,38 @@ func isFieldEmpty(v reflect.Value) bool {
 	default:
 		// For other types, compare with the zero value
 		return v.Interface() == reflect.Zero(v.Type()).Interface()
+	}
+}
+
+func setField(field reflect.Value, defaultValue string) {
+	switch field.Kind() {
+	case reflect.String:
+		field.SetString(defaultValue)
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		intValue, err := strconv.ParseInt(defaultValue, 10, 64)
+		if err != nil {
+			errSyntax := strconv.ErrSyntax
+			if errors.Is(err, errSyntax) {
+				dur, err := time.ParseDuration(defaultValue)
+				if err == nil {
+					field.SetInt(int64(dur))
+				}
+			}
+		} else {
+			field.SetInt(intValue)
+		}
+
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+		if uintValue, err := strconv.ParseUint(defaultValue, 10, 64); err == nil {
+			field.SetUint(uintValue)
+		}
+	case reflect.Float32, reflect.Float64:
+		if floatValue, err := strconv.ParseFloat(defaultValue, 64); err == nil {
+			field.SetFloat(floatValue)
+		}
+	case reflect.Bool:
+		if boolValue, err := strconv.ParseBool(defaultValue); err == nil {
+			field.SetBool(boolValue)
+		}
 	}
 }

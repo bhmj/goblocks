@@ -1,6 +1,9 @@
 package telegram
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+)
 
 type Message struct {
 	id        int64
@@ -28,7 +31,7 @@ func (m *Message) WithButton(text string, fn UserCallback) *Message {
 }
 
 func (m *Message) Send() error {
-	var replyMarkup *InlineKeyboardMarkup = nil
+	var replyMarkup *InlineKeyboardMarkup
 	if len(m.buttons) > 0 {
 		buttons := []InlineKeyboardButton{}
 		for i, btn := range m.buttons {
@@ -38,6 +41,7 @@ func (m *Message) Send() error {
 		replyMarkup = &InlineKeyboardMarkup{InlineKeyboard: [][]InlineKeyboardButton{buttons}}
 	}
 	return m.sender.SendMessage(
+		context.Background(),
 		m.text,
 		m.chatID,
 		string(m.parseMode),

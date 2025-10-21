@@ -4,12 +4,11 @@ import (
 	"context"
 	"errors"
 
+	"github.com/bhmj/goblocks/dbase/abstract"
 	"github.com/georgysavva/scany/pgxscan"
 	"github.com/jackc/pgconn"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool" // PostgreSQL driver
-
-	"github.com/bhmj/goblocks/dbase/abstract"
 )
 
 var (
@@ -24,7 +23,7 @@ type pgxQuerier interface {
 }
 
 type Psql struct {
-	ctx  context.Context // nolint:containedctx
+	ctx  context.Context //nolint:containedctx
 	pool *pgxpool.Pool   // connection pool
 	conn pgxQuerier      // active connection
 	tx   pgx.Tx          // current transaction
@@ -33,12 +32,12 @@ type Psql struct {
 func New(ctx context.Context, conn string) (abstract.DB, error) {
 	config, err := pgxpool.ParseConfig(conn)
 	if err != nil {
-		return nil, err // nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	pool, err := pgxpool.ConnectConfig(ctx, config)
 	if err != nil {
-		return nil, err // nolint:wrapcheck
+		return nil, err //nolint:wrapcheck
 	}
 
 	return &Psql{
@@ -83,14 +82,14 @@ func (p *Psql) Commit() error {
 }
 
 func (p *Psql) Connect() error {
-	return p.pool.Ping(p.ctx) // nolint:wrapcheck
+	return p.pool.Ping(p.ctx) //nolint:wrapcheck
 }
 
 func (p *Psql) Query(dst interface{}, query string, args ...interface{}) error {
 	if len(args) == 0 {
-		return pgxscan.Select(p.ctx, p.conn, dst, query) // nolint:wrapcheck
+		return pgxscan.Select(p.ctx, p.conn, dst, query) //nolint:wrapcheck
 	}
-	return pgxscan.Select(p.ctx, p.conn, dst, query, args...) // nolint:wrapcheck
+	return pgxscan.Select(p.ctx, p.conn, dst, query, args...) //nolint:wrapcheck
 }
 
 func (p *Psql) QueryRow(dst interface{}, query string, args ...interface{}) (bool, error) {
@@ -103,21 +102,21 @@ func (p *Psql) QueryRow(dst interface{}, query string, args ...interface{}) (boo
 	if err != nil && errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
-	return err == nil, err // nolint:wrapcheck
+	return err == nil, err //nolint:wrapcheck
 }
 
 func (p *Psql) QueryValue(dst interface{}, query string, args ...interface{}) error {
 	row := p.conn.QueryRow(p.ctx, query, args...)
-	return row.Scan(dst) // nolint:wrapcheck
+	return row.Scan(dst) //nolint:wrapcheck
 }
 
 func (p *Psql) Exec(query string, args ...interface{}) error {
 	if len(args) == 0 {
 		_, err := p.conn.Exec(p.ctx, query)
-		return err // nolint:wrapcheck
+		return err //nolint:wrapcheck
 	}
 	_, err := p.conn.Exec(p.ctx, query, args...)
-	return err // nolint:wrapcheck
+	return err //nolint:wrapcheck
 }
 
 func (p *Psql) Close() {
