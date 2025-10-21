@@ -38,20 +38,32 @@ func New(logger log.MetaLogger, port int, appStatus AppStatus) *Server {
 	return health
 }
 
-func (s *Server) Run() error {
+func (s *Server) Run(ctx context.Context) error {
 	s.logger.Info("starting healthcheck server",
 		log.Bool("tls", false),
 		log.Int("port", s.port),
 	)
 
-	if err := s.server.ListenAndServe(); err != nil {
+	errCh := make(chan error)
+
+	go func() {
+		err := s.server.ListenAndServe()
 		if errors.Is(err, http.ErrServerClosed) {
 			s.logger.Info("healthcheck server closed")
-			return nil
+			errCh <- nil
+			return
 		}
-		return fmt.Errorf("failed to start healthcheck server: %w", err)
+		errCh <- fmt.Errorf("failed to start healthcheck server: %w", err)
+	}()
+
+	select {
+	case <-ctx.Done():
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+		return s.server.Shutdown(ctx)
+	case err := <-errCh:
+		return err
 	}
-	return nil
 }
 
 func (s *Server) Shutdown(ctx context.Context) error {
