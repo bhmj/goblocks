@@ -45,11 +45,6 @@ type httpserver struct {
 	logger log.MetaLogger
 
 	listener net.Listener
-
-	sentryHandler *sentryhttp.Handler
-	connWatcher   *ConnectionWatcher
-	rateLimiter   *rate.Limiter
-	authProvider  apiauth.Auth
 }
 
 // NewServer returns an HTTP server
@@ -61,24 +56,29 @@ func NewServer(
 	sentryHandler *sentryhttp.Handler,
 ) (Server, error) {
 	connWatcher := NewConnectionWatcher(metricsRegistry.Get(), logger)
-	limiter := rate.NewLimiter(cfg.RateLimit, int(float64(cfg.RateLimit)*rateLimitBurstRatio))
+	rateLimiter := rate.NewLimiter(cfg.RateLimit, int(float64(cfg.RateLimit)*rateLimitBurstRatio))
 	var authProvider apiauth.Auth
 	if cfg.Token != "" {
 		authProvider = token.New(cfg.Token)
 	}
 	srv := &httpserver{
-		name:          "http",
-		logger:        logger,
-		cfg:           cfg,
-		router:        router,
-		sentryHandler: sentryHandler,
-		connWatcher:   connWatcher,
-		rateLimiter:   limiter,
-		authProvider:  authProvider,
+		name:   "http",
+		logger: logger,
+		cfg:    cfg,
+		router: router,
 		server: &http.Server{
 			ReadTimeout: cfg.ReadTimeout,
-			Handler:     router,
 			ConnState:   connWatcher.OnStateChange,
+			Handler: sentryHandler.HandleFunc(
+				ConnLimiterMiddleware(
+					RateLimiterMiddleware(
+						AuthenticationMiddleware(router, authProvider),
+						rateLimiter,
+					),
+					connWatcher,
+					cfg.OpenConnLimit,
+				),
+			),
 		},
 	}
 
@@ -125,21 +125,6 @@ func (s *httpserver) Run(ctx context.Context) error {
 	}
 }
 
-// HandleFunc adds the following middleware:
-//   - Sentry panic wrapper and recoverer
-//   - incoming connection limiter
-//   - request rate limiter (throttler)
-//   - authentication
 func (s *httpserver) HandleFunc(method, path string, handler http.HandlerFunc) {
-	wrapped := s.sentryHandler.HandleFunc(
-		ConnLimiterMiddleware(
-			RateLimiterMiddleware(
-				AuthenticationMiddleware(handler, s.authProvider),
-				s.rateLimiter,
-			),
-			s.connWatcher,
-			s.cfg.OpenConnLimit,
-		),
-	)
-	s.router.HandleFunc(method, path, wrapped)
+	s.router.HandleFunc(method, path, handler)
 }
