@@ -32,7 +32,7 @@ var errInvalidServiceName = fmt.Errorf("service name must match the unquoted yam
 var Version = "dev"
 
 type application struct {
-	services    []appService
+	services    map[string]appService
 	serviceDefs map[string]registeredService
 	logger      log.MetaLogger
 	cfg         *Config
@@ -141,6 +141,7 @@ func (a *application) Run(config any) {
 	a.logger = logger
 
 	// create services
+	a.services = make(map[string]appService)
 	for name, reg := range a.serviceDefs {
 		serviceReporter, err := appStatus.GetServiceReporter(name)
 		if err != nil {
@@ -150,7 +151,7 @@ func (a *application) Run(config any) {
 		if err != nil {
 			logger.Fatal("create service", log.String("service", name), log.Error(err))
 		}
-		a.services = append(a.services, service)
+		a.services[name] = service
 	}
 
 	a.runEverything(appReporter)
@@ -246,8 +247,8 @@ func (a *application) runEverything(appReporter appstatus.ServiceStatusReporter)
 	})
 
 	// run services
-	for _, service := range a.services {
-		a.addHandlers(service.GetHandlers())
+	for name, service := range a.services {
+		a.addHandlers(name, service.GetHandlers())
 		eg.Go(func() error {
 			return service.Run(ctx)
 		})
@@ -283,8 +284,8 @@ func (a *application) runEverything(appReporter appstatus.ServiceStatusReporter)
 	a.logger.Info("terminated successfully")
 }
 
-func (a *application) addHandlers(handlers []HandlerDefinition) {
+func (a *application) addHandlers(service string, handlers []HandlerDefinition) {
 	for _, h := range handlers {
-		a.httpServer.HandleFunc(h.Endpoint, h.Method, h.Path, h.Func)
+		a.httpServer.HandleFunc(service, h.Endpoint, h.Method, h.Path, h.Func)
 	}
 }

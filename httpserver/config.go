@@ -19,7 +19,6 @@ const (
 
 // Config defines server parameters
 type Config struct {
-	APIBase          string         `yaml:"api_base" description:"Public API base prefix" default:"api"`
 	Port             int            `yaml:"port" description:"Port number API listens on" default:"8080"`
 	StatsPort        int            `yaml:"stats_port" description:"Port number stats server listens on" default:"8081"`
 	UseTLS           bool           `yaml:"use_tls" description:"Use TLS for API calls"`

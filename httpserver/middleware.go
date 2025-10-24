@@ -73,7 +73,7 @@ func panicLoggerMiddleware(next http.Handler, logger log.MetaLogger) http.Handle
 
 // after router middlewares
 
-func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger, metrics *serviceMetrics, endpoint string) http.HandlerFunc {
+func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger, metrics *serviceMetrics, service, endpoint string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// get real remote address
 		remoteAddr := r.RemoteAddr
@@ -102,7 +102,7 @@ func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger,
 		// metrics
 		startTime := time.Now()
 		code, err := handler(w, r.WithContext(ctx))
-		defer metrics.ScoreMethod(endpoint, startTime, err)
+		defer metrics.ScoreMethod(service, endpoint, startTime, err)
 		contextLogger.Info("finish")
 		// errorer
 		if err != nil {

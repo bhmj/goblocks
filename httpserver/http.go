@@ -7,7 +7,6 @@ import (
 	"net"
 	"net/http"
 	"strings"
-	"time"
 
 	"github.com/bhmj/goblocks/apiauth"
 	"github.com/bhmj/goblocks/apiauth/token"
@@ -27,15 +26,12 @@ type Router interface {
 	HandleFunc(method, pattern string, handler func(http.ResponseWriter, *http.Request))
 }
 
-const (
-	shutdownTimeout     = 1 * time.Second // how much time to wait for running queries until force server shutdown
-	rateLimitBurstRatio = float64(1.2)    // allow this % bursts of incoming requests
-)
+const rateLimitBurstRatio = float64(1.2) // allow this % bursts of incoming requests
 
 // Server implements basic Kube-dispatched HTTP server
 type Server interface {
 	Run(ctx context.Context) error
-	HandleFunc(endpoint, method, path string, handler HandlerWithResult)
+	HandleFunc(service, endpoint, method, path string, handler HandlerWithResult)
 }
 
 type httpserver struct {
@@ -155,12 +151,10 @@ func (s *httpserver) Run(ctx context.Context) error {
 	}
 }
 
-func (s *httpserver) HandleFunc(endpoint, method, path string, handler HandlerWithResult) {
-	apiBase := strings.Trim(s.cfg.APIBase, "/")
-	path = strings.TrimPrefix(path, "/")
+func (s *httpserver) HandleFunc(service, endpoint, method, path string, handler HandlerWithResult) {
 	s.router.HandleFunc(
 		method,
-		"/"+apiBase+"/"+path,
-		instrumentationMiddleware(handler, s.logger, s.metrics, endpoint),
+		"/"+strings.TrimPrefix(path, "/"),
+		instrumentationMiddleware(handler, s.logger, s.metrics, service, endpoint),
 	)
 }

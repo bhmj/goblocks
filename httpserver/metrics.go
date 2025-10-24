@@ -30,19 +30,20 @@ func newMetrics(metricsRegistry prometheus.Registerer, conf metrics.Config) *ser
 	metrics.errorsCounter = factory.NewCounterVec(prometheus.CounterOpts{
 		Name: "error_count",
 		Help: "error count per method",
-	}, []string{"method"})
+	}, []string{"service", "endpoint"})
 	metrics.latency = factory.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "request_latency",
 		Help:    "total duration of request in seconds",
 		Buckets: buckets,
-	}, []string{"method"})
+	}, []string{"service", "endpoint"})
 
 	return metrics
 }
 
-func (m *serviceMetrics) ScoreMethod(apiMethod string, begin time.Time, err error) {
+func (m *serviceMetrics) ScoreMethod(service, endpoint string, begin time.Time, err error) {
 	labels := prometheus.Labels{
-		"method": apiMethod,
+		"service":  service,
+		"endpoint": endpoint,
 	}
 	if isError(err) {
 		m.errorsCounter.With(labels).Add(1)

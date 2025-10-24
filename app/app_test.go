@@ -32,6 +32,7 @@ const serviceName = "test_service"
 
 // the service config data is located in the single yaml file under the "{service_name}" key
 type serviceConfig struct {
+	APIBase string `yaml:"api_base"`
 	Setting string `yaml:"setting" default:"default setting"`
 }
 
@@ -85,13 +86,13 @@ func (s *serviceData) GetHandlers() []app.HandlerDefinition {
 		{
 			Endpoint: "factorial",
 			Method:   "GET",
-			Path:     "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
+			Path:     s.cfg.APIBase + "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
 			Func:     s.factorialHandler,
 		},
 		{
 			Endpoint: "settings",
 			Method:   "GET",
-			Path:     "/settings",
+			Path:     s.cfg.APIBase + "/settings",
 			Func:     s.settingsHandler,
 		},
 	}
@@ -235,7 +236,6 @@ func CreateTestConfig() *TestConfig {
 	return &TestConfig{
 		App: app.Config{
 			HTTP: httpserver.Config{
-				APIBase:   "api",
 				Port:      ports[0],
 				StatsPort: ports[1],
 				Metrics: metrics.Config{
@@ -244,6 +244,7 @@ func CreateTestConfig() *TestConfig {
 			},
 		},
 		Service: serviceConfig{
+			APIBase: "api",
 			Setting: "my setting",
 		},
 	}
