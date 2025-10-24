@@ -28,9 +28,10 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var errInvalidServiceName = errors.New("service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)")
-
-var Version = "dev" //nolint:gochecknoglobals
+var (
+	errInvalidServiceName = errors.New("service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)")
+	errEmptyConfig        = errors.New("config is empty or invalid YAML document")
+)
 
 type application struct {
 	services    map[string]Service
@@ -48,12 +49,12 @@ type registeredService struct {
 }
 
 // New creates a new Application instance
-func New(appName string) Application {
+func New(appName, appVersion string) Application {
 	currentUser, err := user.Current()
 	if err != nil {
 		syslog.Fatal(err.Error())
 	}
-	syslog.Printf("Starting %s, version %s\n", appName, Version)
+	syslog.Printf("Starting %s, version %s\n", appName, appVersion)
 	syslog.Printf("username: %s, uid: %s, gid: %s", currentUser.Username, currentUser.Uid, currentUser.Gid)
 
 	return &application{cfg: &Config{}}
@@ -199,7 +200,7 @@ func (a *application) readConfigData(data []byte) error {
 	}
 
 	if len(root.Content) == 0 {
-		return fmt.Errorf("empty YAML document")
+		return errEmptyConfig
 	}
 
 	mapping := root.Content[0] // top-level mapping
@@ -215,9 +216,9 @@ func (a *application) readConfigData(data []byte) error {
 		if err := node.Decode(a.cfg); err != nil {
 			return fmt.Errorf("app config: %w", err)
 		}
-		if err := conftool.DefaultsAndRequired(a.cfg); err != nil {
-			return fmt.Errorf("app config defaults and required: %w", err)
-		}
+	}
+	if err := conftool.DefaultsAndRequired(a.cfg); err != nil {
+		return fmt.Errorf("app config: missing required value: %w", err)
 	}
 
 	// decode configs for all registered services
@@ -229,8 +230,10 @@ func (a *application) readConfigData(data []byte) error {
 		if err := node.Decode(service.Config); err != nil {
 			return fmt.Errorf("decode %s: %w", name, err)
 		}
+	}
+	for name, service := range a.serviceDefs {
 		if err := conftool.DefaultsAndRequired(service.Config); err != nil {
-			return fmt.Errorf("%s config defaults and required: %w", name, err)
+			return fmt.Errorf("%s config: missing required value: %w", name, err)
 		}
 	}
 

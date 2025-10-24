@@ -146,7 +146,7 @@ func TestAppReady(t *testing.T) {
 
 	// prepare and run app
 	cfg := CreateTestConfig()
-	app := app.New("test app")
+	app := app.New("test app", "v.test")
 	serviceCfg := &serviceConfig{}
 	err := app.RegisterService(serviceName, serviceCfg, FactoryForTestService)
 	a.Nil(err)
@@ -167,7 +167,7 @@ func TestAppResponse(t *testing.T) {
 
 	// prepare and run app
 	cfg := CreateTestConfig()
-	app := app.New("test app")
+	app := app.New("test app", "v.test")
 	serviceCfg := &serviceConfig{}
 	err := app.RegisterService(serviceName, serviceCfg, FactoryForTestService)
 	a.NoError(err)
@@ -207,7 +207,7 @@ func TestAppShutdown(t *testing.T) {
 
 	// prepare and run app
 	cfg := CreateTestConfig()
-	app := app.New("test app")
+	app := app.New("test app", "v.test")
 	serviceCfg := &serviceConfig{}
 	err := app.RegisterService(serviceName, serviceCfg, FactoryForTestService)
 	a.NoError(err)
