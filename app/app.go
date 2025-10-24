@@ -169,8 +169,11 @@ func (a *application) readConfigFile() {
 		syslog.Fatalf("Usage: %s --config-file=/path/to/config.yaml", os.Args[0])
 	}
 
-	configPath := filepath.Dir(*pstr)
-	raw, err := os.ReadFile(configPath)
+	fullname, err := filepath.Abs(*pstr)
+	if err != nil {
+		syslog.Fatalf("filepath: %s", err)
+	}
+	raw, err := os.ReadFile(fullname)
 	if err != nil {
 		syslog.Fatalf("read config: %s", err)
 	}
@@ -183,7 +186,7 @@ func (a *application) readConfigFile() {
 }
 
 func (a *application) readConfigData(data []byte) error {
-	var rootNodes map[string]*yaml.Node
+	var root yaml.Node
 
 	cfg := make(map[string]any)
 
@@ -191,16 +194,28 @@ func (a *application) readConfigData(data []byte) error {
 		cfg[name] = reg.Config
 	}
 
-	if err := yaml.Unmarshal(data, &rootNodes); err != nil {
+	if err := yaml.Unmarshal(data, &root); err != nil {
 		return err
+	}
+
+	if len(root.Content) == 0 {
+		return fmt.Errorf("empty YAML document")
+	}
+
+	mapping := root.Content[0] // top-level mapping
+	rootNodes := make(map[string]*yaml.Node)
+	for i := 0; i < len(mapping.Content); i += 2 {
+		key := mapping.Content[i].Value
+		val := mapping.Content[i+1]
+		rootNodes[key] = val
 	}
 
 	// decode app config
 	if node, ok := rootNodes["app"]; ok {
-		if err := node.Decode(&a.cfg); err != nil {
+		if err := node.Decode(a.cfg); err != nil {
 			return fmt.Errorf("app config: %w", err)
 		}
-		if err := conftool.DefaultsAndRequired(&a.cfg); err != nil {
+		if err := conftool.DefaultsAndRequired(a.cfg); err != nil {
 			return fmt.Errorf("app config defaults and required: %w", err)
 		}
 	}
