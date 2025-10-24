@@ -29,7 +29,7 @@ import (
 
 var errInvalidServiceName = fmt.Errorf("service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)")
 
-var appVersion = "dev"
+var Version = "dev"
 
 type application struct {
 	services    []appService
@@ -57,7 +57,7 @@ func New(appName string) Application {
 	if err != nil {
 		syslog.Fatal(err.Error())
 	}
-	syslog.Printf("Starting %s, version %s\n", appName, appVersion)
+	syslog.Printf("Starting %s, version %s\n", appName, Version)
 	syslog.Printf("username: %s, uid: %s, gid: %s", currentUser.Username, currentUser.Uid, currentUser.Gid)
 
 	return &application{cfg: &Config{}}
