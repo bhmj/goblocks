@@ -63,7 +63,7 @@ func panicLoggerMiddleware(next http.Handler, logger log.MetaLogger) http.Handle
 				rid := r.Context().Value(ContextRequestID)
 				reqID, _ := rid.(string)
 				logger.Error("PANIC", log.String("rid", reqID), log.Stack("stack"))
-				httpreply.Error(w, err, http.StatusInternalServerError)
+				_, _ = httpreply.Error(w, err, http.StatusInternalServerError)
 				logger.Flush()
 			}
 		}()
@@ -81,7 +81,7 @@ func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger,
 			remoteAddr = x[0]
 		} else if x, found := r.Header["X-Real-Ip"]; found {
 			remoteAddr = x[0]
-		} else if x, found := r.Header["X-Real-IP"]; found { //nolint:go-staticcheck
+		} else if x, found := r.Header["X-Real-IP"]; found { //nolint:staticcheck
 			remoteAddr = x[0]
 		}
 		r.RemoteAddr = strings.Split(remoteAddr, ":")[0]
@@ -96,6 +96,8 @@ func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger,
 			log.String("rid", reqID),
 		}
 		contextLogger := logger.With(fields...)
+		defer contextLogger.Flush()
+
 		ctx := context.WithValue(r.Context(), log.ContextMetaLogger, contextLogger)
 		ctx = context.WithValue(ctx, ContextRequestID, reqID) // used in panic middleware
 		contextLogger.Info("start")
@@ -107,8 +109,7 @@ func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger,
 		// errorer
 		if err != nil {
 			contextLogger.Error("runtime", log.String("rid", reqID), log.Error(err), log.MainMessage())
-			httpreply.Error(w, err, code)
+			_, _ = httpreply.Error(w, err, code)
 		}
-		contextLogger.Flush()
 	}
 }

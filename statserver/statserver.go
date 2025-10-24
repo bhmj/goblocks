@@ -66,7 +66,7 @@ func (s *statServer) Run(ctx context.Context) error {
 	case <-ctx.Done():
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 		defer cancel()
-		return s.server.Shutdown(ctx)
+		return s.server.Shutdown(ctx) //nolint:contextcheck
 	case err := <-errCh:
 		return err
 	}

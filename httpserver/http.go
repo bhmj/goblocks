@@ -79,7 +79,7 @@ func NewServer(
 	//
 	// -> SERVICE HANDLER
 
-	var safetyWrappers = func(router Router) http.Handler {
+	safetyWrappers := func(router Router) http.Handler {
 		return connLimiterMiddleware(
 			rateLimiterMiddleware(
 				authMiddleware(

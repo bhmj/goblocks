@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	syslog "log"
@@ -27,22 +28,17 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-var errInvalidServiceName = fmt.Errorf("service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)")
+var errInvalidServiceName = errors.New("service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)")
 
-var Version = "dev"
+var Version = "dev" //nolint:gochecknoglobals
 
 type application struct {
-	services    map[string]appService
+	services    map[string]Service
 	serviceDefs map[string]registeredService
 	logger      log.MetaLogger
 	cfg         *Config
 	httpServer  httpserver.Server
 	statServer  statserver.Server
-}
-
-type appService interface {
-	GetHandlers() []HandlerDefinition
-	Run(ctx context.Context) error
 }
 
 type registeredService struct {
@@ -141,7 +137,7 @@ func (a *application) Run(config any) {
 	a.logger = logger
 
 	// create services
-	a.services = make(map[string]appService)
+	a.services = make(map[string]Service)
 	for name, reg := range a.serviceDefs {
 		serviceReporter, err := appStatus.GetServiceReporter(name)
 		if err != nil {
@@ -156,7 +152,7 @@ func (a *application) Run(config any) {
 
 	a.runEverything(appReporter)
 
-	a.logger.Sync()
+	a.logger.Sync() //nolint:errcheck
 }
 
 func (a *application) readConfigStruct(config any) {

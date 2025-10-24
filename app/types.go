@@ -29,7 +29,7 @@ type Service interface {
 	Run(ctx context.Context) error
 }
 
-// ServiceFactry is a function that creates a service instance
+// ServiceFactory is a function that creates a service instance
 type ServiceFactory func(
 	cfg any,
 	logger log.MetaLogger,

@@ -1,11 +1,17 @@
 package app
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 	"strings"
 
 	"github.com/bhmj/goblocks/conftool"
+)
+
+var (
+	errConfigNotStruct  = errors.New("config must be a struct or pointer to struct")
+	errCopyMustBeStruct = errors.New("copySameType: both must be struct or pointer to struct")
 )
 
 // applyConfigStruct copies matching subconfigs (by yaml tag) from src into the
@@ -16,11 +22,11 @@ func (a *application) applyConfigStruct(src any) error {
 		v = v.Elem()
 	}
 	if v.Kind() != reflect.Struct {
-		return fmt.Errorf("config must be a struct or pointer to struct")
+		return errConfigNotStruct
 	}
 
 	t := v.Type()
-	for i := 0; i < t.NumField(); i++ {
+	for i := range t.NumField() {
 		field := t.Field(i)
 		yamlKey := yamlTag(field)
 		if yamlKey == "" {
@@ -34,14 +40,20 @@ func (a *application) applyConfigStruct(src any) error {
 
 		switch yamlKey {
 		case "app":
-			copySameType(a.cfg, fv.Interface())
+			err := copySameType(a.cfg, fv.Interface())
+			if err != nil {
+				return fmt.Errorf("copy app config: %w", err)
+			}
 			if err := conftool.DefaultsAndRequired(a.cfg); err != nil {
 				return fmt.Errorf("required field not set in %s section: %w", "app", err)
 			}
 
 		default:
 			if service, ok := a.serviceDefs[yamlKey]; ok {
-				copySameType(service.Config, fv.Interface())
+				err := copySameType(service.Config, fv.Interface())
+				if err != nil {
+					return fmt.Errorf("copy app config: %w", err)
+				}
 				if err := conftool.DefaultsAndRequired(service.Config); err != nil {
 					return fmt.Errorf("required field not set in %s section: %w", service.Name, err)
 				}
@@ -74,13 +86,13 @@ func copySameType(dst, src any) error {
 	}
 
 	if dv.Kind() != reflect.Struct || sv.Kind() != reflect.Struct {
-		return fmt.Errorf("copySameType: both must be struct or pointer to struct")
+		return errCopyMustBeStruct
 	}
 	if dv.Type() != sv.Type() {
 		return fmt.Errorf("copySameType: type mismatch (%s vs %s)", dv.Type(), sv.Type())
 	}
 
-	for i := 0; i < dv.NumField(); i++ {
+	for i := range dv.NumField() {
 		df := dv.Field(i)
 		sf := sv.Field(i)
 		if df.CanSet() {

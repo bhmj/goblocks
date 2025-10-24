@@ -27,7 +27,7 @@ func newMetrics(metricsRegistry prometheus.Registerer, conf metrics.Config) *ser
 		buckets = defaultBuckets
 	}
 
-	metrics.errorsCounter = factory.NewCounterVec(prometheus.CounterOpts{
+	metrics.errorsCounter = factory.NewCounterVec(prometheus.CounterOpts{ //nolint:promlinter
 		Name: "error_count",
 		Help: "error count per method",
 	}, []string{"service", "endpoint"})
