@@ -1,4 +1,4 @@
-package healthserver
+package statserver
 
 import (
 	"context"
@@ -17,28 +17,34 @@ type AppStatus interface {
 	IsAlive() bool
 }
 
-type Server struct {
+type statServer struct {
 	server    *http.Server
 	appStatus AppStatus
 	logger    log.MetaLogger
 	port      int
 }
 
-func New(logger log.MetaLogger, port int, appStatus AppStatus) *Server {
-	health := &Server{appStatus: appStatus, logger: logger, port: port}
+type Server interface {
+	Run(ctx context.Context) error
+	Shutdown(ctx context.Context) error
+}
+
+func New(port int, logger log.MetaLogger, appStatus AppStatus, promHandler http.Handler) Server {
+	result := &statServer{appStatus: appStatus, logger: logger, port: port}
 	router := http.NewServeMux()
-	router.HandleFunc("GET /ready", health.ReadyHandler)
-	router.HandleFunc("GET /alive", health.AliveHandler)
-	health.server = &http.Server{
+	router.HandleFunc("GET /ready", result.ReadyHandler)
+	router.HandleFunc("GET /alive", result.AliveHandler)
+	router.Handle("GET /metrics", promHandler)
+	result.server = &http.Server{
 		Addr:              ":" + strconv.Itoa(port),
 		ReadHeaderTimeout: time.Second,
 		Handler:           router,
 	}
 
-	return health
+	return result
 }
 
-func (s *Server) Run(ctx context.Context) error {
+func (s *statServer) Run(ctx context.Context) error {
 	s.logger.Info("starting healthcheck server",
 		log.Bool("tls", false),
 		log.Int("port", s.port),
@@ -66,14 +72,14 @@ func (s *Server) Run(ctx context.Context) error {
 	}
 }
 
-func (s *Server) Shutdown(ctx context.Context) error {
+func (s *statServer) Shutdown(ctx context.Context) error {
 	if err := s.server.Shutdown(ctx); err != nil {
 		return fmt.Errorf("failed to shutdown server: %w", err)
 	}
 	return nil
 }
 
-func (s *Server) ReadyHandler(w http.ResponseWriter, r *http.Request) {
+func (s *statServer) ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 
@@ -84,7 +90,7 @@ func (s *Server) ReadyHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) AliveHandler(w http.ResponseWriter, r *http.Request) {
+func (s *statServer) AliveHandler(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 	_, _ = io.Copy(io.Discard, r.Body)
 

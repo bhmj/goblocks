@@ -71,10 +71,24 @@ func parseRead(f io.Reader, decoder unmarshaller, cfg any) error {
 		return fmt.Errorf("decoding config file: %w", err)
 	}
 
-	return defaultsAndRequired(cfg)
+	return DefaultsAndRequired(cfg)
 }
 
-func defaultsAndRequired(cfg any) error {
+func ParseEnvVars(buf []byte) []byte {
+	rx := regexp.MustCompile(`{{(\w+)}}`)
+	for {
+		matches := rx.FindSubmatch(buf)
+		if matches == nil {
+			break
+		}
+		v := os.Getenv(strings.ToUpper(string(matches[1])))
+		buf = bytes.ReplaceAll(buf, matches[0], []byte(v))
+	}
+
+	return buf
+}
+
+func DefaultsAndRequired(cfg any) error {
 	reqs := defsAndReqs(cfg)
 	if len(reqs) > 0 {
 		return fmt.Errorf("required config parameters not set: %s", strings.Join(reqs, ", ")) //nolint:err113
@@ -94,7 +108,13 @@ func defsAndReqs(cfg any) []string {
 		// Set the default value based on the field kind
 		if field.Kind() == reflect.Struct { //nolint:nestif
 			// If it's a struct, recurse
-			reqs = append(reqs, defsAndReqs(field.Addr().Interface())...)
+			name := fieldType.Name
+			dive := defsAndReqs(field.Addr().Interface())
+			if len(dive) > 0 {
+				for _, d := range dive {
+					reqs = append(reqs, fmt.Sprintf("%s.%s", name, d))
+				}
+			}
 		} else if field.CanSet() {
 			isZeroValue := isFieldEmpty(field)
 			if !isZeroValue {

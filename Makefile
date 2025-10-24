@@ -28,6 +28,10 @@ help:
 test:
 	go test -cover ./...
 
+cover:
+	go test -coverprofile=gocover.tmp ./...
+	go tool cover -html=gocover.tmp
+
 lint:
 	golangci-lint run
 
@@ -37,4 +41,4 @@ update-deps:
 cake:
 	@printf "%b\n" "$$CAKE"
 
-.PHONY: help test lint update-deps cake
+.PHONY: help test lint update-deps cake cover
