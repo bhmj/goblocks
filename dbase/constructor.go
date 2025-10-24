@@ -37,13 +37,16 @@ func New(ctx context.Context, logger log.MetaLogger, cfg Config, options ...int)
 	}
 
 	// dumb
-	delay := 300 * time.Millisecond //nolint:mnd
-	for range 20 {
+	delay := time.Second
+	retries := 10
+	for i := range retries {
 		db, err = postgresql.New(ctx, cfg.ConnString) // establishes one connection!
 		if err != nil {
 			logger.Error("postgresql.New", log.Error(err), log.String("dbname", dbName))
-			time.Sleep(delay) // 0:0.3, 1:0.6, 2:1.2, 3:2.4, 4:4.8 -> 6.3 s total
-			delay *= 2
+			if i < retries-1 {
+				time.Sleep(delay)
+				delay = (delay * 120) / 100 //nolint:gomnd
+			}
 		} else {
 			break
 		}
