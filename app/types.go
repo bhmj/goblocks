@@ -11,16 +11,16 @@ import (
 
 // Application is the main application interface
 type Application interface {
-	RegisterService(name string, cfg any, factory ServiceFactory) error
+	RegisterService(name string, cfg any, factory ServiceFactory) error // service name must match the unquoted yaml key format (e.g. [a-zA-Z_]+)
 	Run(config any)
 }
 
 // HandlerDefinition contains method definition to use by HTTP server
 type HandlerDefinition struct {
-	EndpointName string // Prometheus metric name for the endpoint (valid regex is [a-zA-Z_:][a-zA-Z0-9_:]* but good practice is to avoid colons!)
-	Method       string // GET, POST, etc.
-	Path         string // URL path (Gorilla URL vars allowed)
-	Func         httpserver.HandlerWithResult
+	Endpoint string // used as "method" label for the "{service_name}_request_latency" metric
+	Method   string // GET, POST, etc.
+	Path     string // URL path (Gorilla URL vars allowed)
+	Func     httpserver.HandlerWithResult
 }
 
 // Service is an interface that application services should implement

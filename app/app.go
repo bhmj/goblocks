@@ -285,6 +285,6 @@ func (a *application) runEverything(appReporter appstatus.ServiceStatusReporter)
 
 func (a *application) addHandlers(handlers []HandlerDefinition) {
 	for _, h := range handlers {
-		a.httpServer.HandleFunc(h.EndpointName, h.Method, h.Path, h.Func)
+		a.httpServer.HandleFunc(h.Endpoint, h.Method, h.Path, h.Func)
 	}
 }

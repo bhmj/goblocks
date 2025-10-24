@@ -83,16 +83,16 @@ func FactoryForTestService(
 func (s *serviceData) GetHandlers() []app.HandlerDefinition {
 	return []app.HandlerDefinition{
 		{
-			EndpointName: "factorial",
-			Method:       "GET",
-			Path:         "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
-			Func:         s.factorialHandler,
+			Endpoint: "factorial",
+			Method:   "GET",
+			Path:     "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
+			Func:     s.factorialHandler,
 		},
 		{
-			EndpointName: "settings",
-			Method:       "GET",
-			Path:         "/settings",
-			Func:         s.settingsHandler,
+			Endpoint: "settings",
+			Method:   "GET",
+			Path:     "/settings",
+			Func:     s.settingsHandler,
 		},
 	}
 }
