@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/bhmj/goblocks/apiauth"
@@ -34,15 +35,16 @@ const (
 // Server implements basic Kube-dispatched HTTP server
 type Server interface {
 	Run(ctx context.Context) error
-	HandleFunc(method, pattern string, handler http.HandlerFunc)
+	HandleFunc(endpoint, method, path string, handler HandlerWithResult)
 }
 
 type httpserver struct {
-	name   string
-	cfg    Config
-	router Router
-	server *http.Server
-	logger log.MetaLogger
+	name    string
+	cfg     Config
+	router  Router
+	server  *http.Server
+	logger  log.MetaLogger
+	metrics *serviceMetrics
 
 	listener net.Listener
 }
@@ -50,35 +52,63 @@ type httpserver struct {
 // NewServer returns an HTTP server
 func NewServer(
 	cfg Config,
+	cfgMetrics metrics.Config,
 	router Router,
 	logger log.MetaLogger,
 	metricsRegistry *metrics.Registry,
 	sentryHandler *sentryhttp.Handler,
 ) (Server, error) {
+	metrics := newMetrics(metricsRegistry.Get(), cfgMetrics)
+
 	connWatcher := NewConnectionWatcher(metricsRegistry.Get(), logger)
 	rateLimiter := rate.NewLimiter(cfg.RateLimit, int(float64(cfg.RateLimit)*rateLimitBurstRatio))
 	var authProvider apiauth.Auth
 	if cfg.Token != "" {
 		authProvider = token.New(cfg.Token)
 	}
+
+	// middlewares sequence (in order of execution during request handling):
+	//
+	// -> http server
+	//
+	// connection limiting
+	// rate limiting
+	// authentication
+	// sentry handler
+	// panic logging (logs panic and repanics for sentry)
+	//
+	// -> ROUTER (determine the necessity of further processing)
+	//
+	// instrumentation = request ID + logging + metrics + errorer
+	//
+	// -> SERVICE HANDLER
+
+	var safetyWrappers = func(router Router) http.Handler {
+		return connLimiterMiddleware(
+			rateLimiterMiddleware(
+				authMiddleware(
+					sentryHandler.HandleFunc(
+						panicLoggerMiddleware(router, logger),
+					),
+					authProvider,
+				),
+				rateLimiter,
+			),
+			connWatcher,
+			cfg.OpenConnLimit,
+		)
+	}
+
 	srv := &httpserver{
-		name:   "http",
-		logger: logger,
-		cfg:    cfg,
-		router: router,
+		name:    "http",
+		logger:  logger,
+		metrics: metrics,
+		cfg:     cfg,
+		router:  router,
 		server: &http.Server{
 			ReadTimeout: cfg.ReadTimeout,
 			ConnState:   connWatcher.OnStateChange,
-			Handler: sentryHandler.HandleFunc(
-				ConnLimiterMiddleware(
-					RateLimiterMiddleware(
-						AuthenticationMiddleware(router, authProvider),
-						rateLimiter,
-					),
-					connWatcher,
-					cfg.OpenConnLimit,
-				),
-			),
+			Handler:     safetyWrappers(router),
 		},
 	}
 
@@ -125,6 +155,12 @@ func (s *httpserver) Run(ctx context.Context) error {
 	}
 }
 
-func (s *httpserver) HandleFunc(method, path string, handler http.HandlerFunc) {
-	s.router.HandleFunc(method, path, handler)
+func (s *httpserver) HandleFunc(endpoint, method, path string, handler HandlerWithResult) {
+	apiBase := strings.Trim(s.cfg.APIBase, "/")
+	path = strings.TrimPrefix(path, "/")
+	s.router.HandleFunc(
+		method,
+		"/"+apiBase+"/"+path,
+		instrumentationMiddleware(handler, s.logger, s.metrics, endpoint),
+	)
 }

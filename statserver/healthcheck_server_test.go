@@ -1,4 +1,4 @@
-package healthserver
+package statserver
 
 import (
 	"context"
@@ -20,7 +20,7 @@ func TestServer(t *testing.T) {
 	logger, _ := log.New("info", false)
 	appStatus := appstatus.New()
 	port := getFreeTCPPort()
-	server := New(logger, port, appStatus)
+	server := New(port, logger, appStatus, http.NewServeMux())
 	ctx, cancel := context.WithCancel(context.Background())
 
 	go server.Run(ctx)
@@ -65,7 +65,7 @@ func TestHealthcheckServerContextShutdown(t *testing.T) {
 	logger, _ := log.New("info", false)
 	appStatus := appstatus.New()
 	port := getFreeTCPPort()
-	server := New(logger, port, appStatus)
+	server := New(port, logger, appStatus, http.NewServeMux())
 	ctx, cancel := context.WithCancel(context.Background())
 	errCh := make(chan error)
 	go func() {
