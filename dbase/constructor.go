@@ -45,7 +45,7 @@ func New(ctx context.Context, logger log.MetaLogger, cfg Config, options ...int)
 			logger.Error("postgresql.New", log.Error(err), log.String("dbname", dbName))
 			if i < retries-1 {
 				time.Sleep(delay)
-				delay = (delay * 120) / 100 //nolint:gomnd
+				delay = (delay * 120) / 100 //nolint:mnd
 			}
 		} else {
 			break
