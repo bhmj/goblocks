@@ -17,7 +17,7 @@ type Application interface {
 
 // HandlerDefinition contains method definition to use by HTTP server
 type HandlerDefinition struct {
-	Endpoint string // used as "method" label for the "{service_name}_request_latency" metric
+	Endpoint string // used as "method" label for the `servicename_request_latency{method="endpoint"}` metric
 	Method   string // GET, POST, etc.
 	Path     string // URL path (Gorilla URL vars allowed)
 	Func     httpserver.HandlerWithResult

@@ -91,8 +91,9 @@ func (s *serviceData) factorial(n int) *big.Int {
 
 // Run formally starts the service
 func (s *serviceData) Run(ctx context.Context) error {
-	s.statusReporter.Ready()
+	s.statusReporter.Ready() // IMPORTANT!
 	<-ctx.Done()
+	s.logger.Info("Service terminated")
 	return nil
 }
 
