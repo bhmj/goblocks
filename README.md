@@ -2,11 +2,11 @@
 
 ## What is it?
 
-A set of useful Go packages and a simple backend application framework.
+**It's a set of useful Go packages and a simple backend application framework.**
 
 Some packages like `limitmap`, `retry` or `conftool` can be used separately, others have internal dependencies (mostly to the `log` package) and are best used together.
 
-The main thing that joins all these packages together is that they all supposed to work as part of Go backend service providing some API and/or web output. The complex of these packages is an `app` framework package. IT allows to create a pretty advanced backend service in a matter of minutes.
+The main thing that joins all these packages together is that they all supposed to work as part of Go backend service providing some API and/or web output. The blend of these packages is the `app` framework package. IT allows to create a pretty advanced backend service in a matter of minutes.
 
 Any service built with Goblocks app framework contains out of the box:
  - Ready-to-run **HTTP server** with TLS support
@@ -26,7 +26,9 @@ Make yourself familiar with the examples in /examples/ dir. Currently there's a 
 
 The settings for the whole app are located in config.yaml. The only allowed argument for the binary is a `--config-file=/path/to/config.yaml`.
 
-Look at the `test-factorial.sh`. It demostrates the use of k8s readiness endpoint to check that the service is ready.
+Look at the `test-factorial.sh`. It demostrates the use of k8s readiness endpoint to check for the service readiness.
+
+Another production-scale example of Goblocks App is my [dosasm](https://dosasm.com) [project](https://github.com/bhmj/dosassembly).
 
 ## Application config
 
