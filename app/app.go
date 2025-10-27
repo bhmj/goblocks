@@ -166,7 +166,7 @@ func (a *application) readConfigStruct(config any) {
 func (a *application) readConfigFile() {
 	pstr := flag.String("config-file", "", "")
 	flag.Parse()
-	if pstr == nil {
+	if pstr == nil || *pstr == "" {
 		syslog.Fatalf("Usage: %s --config-file=/path/to/config.yaml", os.Args[0])
 	}
 
