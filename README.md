@@ -22,7 +22,7 @@ Any service built with **Goblocks App** framework contains out of the box:
 
 ## Getting started
 
-Make yourself familiar with the examples in /examples/ dir. Currently there's a [Factorial service](https://github.com/bhmj/goblocks/blob/master/examples/factorial/factorial.go) example that calculates factorials of integers.
+Make yourself familiar with the examples in the `/examples/` dir. Currently there's a [Factorial service](https://github.com/bhmj/goblocks/blob/master/examples/factorial/factorial.go) example that calculates factorials of integers.
 
 All application settings are located in [config.yaml](https://github.com/bhmj/goblocks/blob/master/examples/factorial/config.yaml). The only allowed argument for the binary is a `--config-file=/path/to/config.yaml`.
 
