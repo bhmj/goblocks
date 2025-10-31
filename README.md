@@ -47,7 +47,7 @@ The "app" config section (the structure is located in [/app/config.go](https://g
 
  The `yaml` tags in the service configuration may contain **default values** for configuration parameters. This helps drastically reduce the size of the configuration file and minimize noise.
 
- Configuration values can be automatically taken from environment variables using the `my_key: {ENV_VARIABLE}` syntax. This approach combines the best of both worlds: setting parameters via env variables while keeping them organized in a human-readable, structured YAML format.
+ Configuration values can be automatically taken from environment variables using the `my_key: {{ENV_VARIABLE}}` syntax. This approach combines the best of both worlds: setting parameters via env variables while keeping them organized in a human-readable, structured YAML format.
 
 ## Roadmap
 
