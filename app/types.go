@@ -29,10 +29,18 @@ type Service interface {
 	Run(ctx context.Context) error
 }
 
+// AppInfo contains general app information and settings
+type AppInfo struct {
+	ConfigPath string
+}
+
+type AppInformer func() *AppInfo
+
 // ServiceFactory is a function that creates a service instance
 type ServiceFactory func(
 	cfg any,
 	logger log.MetaLogger,
 	metricsRegistry *metrics.Registry,
 	statusReporter appstatus.ServiceStatusReporter,
+	appInformer AppInformer,
 ) (Service, error)

@@ -70,6 +70,7 @@ func FactoryForTestService(
 	logger log.MetaLogger,
 	metricsRegistry *metrics.Registry,
 	statusReporter appstatus.ServiceStatusReporter,
+	appInformer app.AppInformer,
 ) (app.Service, error) {
 	metrics := newServiceMetrics(metricsRegistry.Get())
 	return &serviceData{

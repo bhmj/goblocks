@@ -38,6 +38,7 @@ type application struct {
 	serviceDefs map[string]registeredService
 	logger      log.MetaLogger
 	cfg         *Config
+	cfgPath     string
 	httpServer  httpserver.Server
 	statServer  statserver.Server
 }
@@ -144,7 +145,7 @@ func (a *application) Run(config any) {
 		if err != nil {
 			logger.Fatal("create service reporter", log.String("service", name), log.Error(err))
 		}
-		service, err := reg.Factory(reg.Config, logger, metricsRegistry, serviceReporter)
+		service, err := reg.Factory(reg.Config, logger, metricsRegistry, serviceReporter, a.appInformer)
 		if err != nil {
 			logger.Fatal("create service", log.String("service", name), log.Error(err))
 		}
@@ -156,8 +157,20 @@ func (a *application) Run(config any) {
 	a.logger.Sync() //nolint:errcheck
 }
 
+func (a *application) appInformer() *AppInfo {
+	return &AppInfo{
+		ConfigPath: a.cfgPath,
+	}
+}
+
 func (a *application) readConfigStruct(config any) {
-	err := a.applyConfigStruct(config)
+	pwd, err := os.Getwd()
+	if err != nil {
+		syslog.Fatalf("get current dir: %s", err)
+	}
+	a.cfgPath = pwd
+
+	err = a.applyConfigStruct(config)
 	if err != nil {
 		syslog.Fatalf("read config data: %s", err)
 	}
@@ -169,6 +182,7 @@ func (a *application) readConfigFile() {
 	if pstr == nil || *pstr == "" {
 		syslog.Fatalf("Usage: %s --config-file=/path/to/config.yaml", os.Args[0])
 	}
+	a.cfgPath = filepath.Dir(*pstr)
 
 	fullname, err := filepath.Abs(*pstr)
 	if err != nil {

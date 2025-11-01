@@ -37,6 +37,7 @@ func FactorialServiceFactory(
 	logger log.MetaLogger,
 	metricsRegistry *metrics.Registry,
 	statusReporter appstatus.ServiceStatusReporter,
+	appInformer app.AppInformer,
 ) (app.Service, error) {
 	return &serviceData{
 		cfg:            cfg.(*serviceConfig),
