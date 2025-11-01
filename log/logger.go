@@ -19,8 +19,12 @@ type (
 const (
 	BoolType FieldType = iota
 	IntType
+	IntpType
+	Float64Type
+	Float64pType
 	StringType
 	StringsType
+	StringpType
 	ErrorType
 	TimeType
 	DurationType
@@ -38,6 +42,7 @@ type Field struct {
 	Key       string
 	Type      FieldType
 	Integer   int64
+	Float64   float64
 	String    string
 	Interface any
 }
@@ -145,12 +150,24 @@ func Int64(key string, val int64) Field {
 	return Field{Key: key, Type: IntType, Integer: val}
 }
 
+func Float64(key string, val float64) Field {
+	return Field{Key: key, Type: IntType, Float64: val}
+}
+
+func Float64p(key string, val *float64) Field {
+	return Field{Key: key, Type: Float64pType, Interface: val}
+}
+
 func String(key string, val string) Field {
 	return Field{Key: key, Type: StringType, String: val}
 }
 
 func Strings(key string, val []string) Field {
 	return Field{Key: key, Type: StringsType, Interface: val}
+}
+
+func Stringp(key string, val *string) Field {
+	return Field{Key: key, Type: StringpType, Interface: val}
 }
 
 func Error(err error) Field {
@@ -185,10 +202,16 @@ func convert(fields []Field) []zap.Field {
 			zapfields = append(zapfields, zap.Bool(field.Key, field.Integer > 0))
 		case IntType:
 			zapfields = append(zapfields, zap.Int64(field.Key, field.Integer))
+		case Float64Type:
+			zapfields = append(zapfields, zap.Float64(field.Key, field.Float64))
+		case Float64pType:
+			zapfields = append(zapfields, zap.Float64p(field.Key, field.Interface.(*float64)))
 		case StringType:
 			zapfields = append(zapfields, zap.String(field.Key, field.String))
 		case StringsType:
 			zapfields = append(zapfields, zap.Strings(field.Key, field.Interface.([]string))) //nolint:forcetypeassert
+		case StringpType:
+			zapfields = append(zapfields, zap.Stringp(field.Key, field.Interface.(*string))) //nolint:forcetypeassert
 		case TimeType:
 			zapfields = append(zapfields, zap.Time(field.Key, field.Interface.(time.Time))) //nolint:forcetypeassert
 		case DurationType:
