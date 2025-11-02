@@ -30,17 +30,15 @@ type Service interface {
 }
 
 // AppInfo contains general app information and settings
-type AppInfo struct {
-	ConfigPath string
+type Options struct {
+	Logger          log.MetaLogger
+	MetricsRegistry *metrics.Registry
+	ServiceReporter appstatus.ServiceStatusReporter
+	ConfigPath      string
 }
-
-type AppInformer func() *AppInfo
 
 // ServiceFactory is a function that creates a service instance
 type ServiceFactory func(
 	cfg any,
-	logger log.MetaLogger,
-	metricsRegistry *metrics.Registry,
-	statusReporter appstatus.ServiceStatusReporter,
-	appInformer AppInformer,
+	options Options,
 ) (Service, error)

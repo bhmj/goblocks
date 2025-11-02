@@ -145,7 +145,13 @@ func (a *application) Run(config any) {
 		if err != nil {
 			logger.Fatal("create service reporter", log.String("service", name), log.Error(err))
 		}
-		service, err := reg.Factory(reg.Config, logger, metricsRegistry, serviceReporter, a.appInformer)
+		options := Options{
+			Logger:          a.logger,
+			MetricsRegistry: metricsRegistry,
+			ServiceReporter: serviceReporter,
+			ConfigPath:      a.cfgPath,
+		}
+		service, err := reg.Factory(reg.Config, options)
 		if err != nil {
 			logger.Fatal("create service", log.String("service", name), log.Error(err))
 		}
@@ -155,12 +161,6 @@ func (a *application) Run(config any) {
 	a.runEverything(appReporter)
 
 	a.logger.Sync() //nolint:errcheck
-}
-
-func (a *application) appInformer() *AppInfo {
-	return &AppInfo{
-		ConfigPath: a.cfgPath,
-	}
 }
 
 func (a *application) readConfigStruct(config any) {

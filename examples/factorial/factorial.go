@@ -12,7 +12,6 @@ import (
 	"github.com/bhmj/goblocks/appstatus"
 	"github.com/bhmj/goblocks/httpreply"
 	"github.com/bhmj/goblocks/log"
-	"github.com/bhmj/goblocks/metrics"
 	"github.com/gorilla/mux"
 )
 
@@ -34,15 +33,12 @@ type serviceData struct {
 // FactorialServiceFactory returns a ready-to-run service instance
 func FactorialServiceFactory(
 	cfg any,
-	logger log.MetaLogger,
-	metricsRegistry *metrics.Registry,
-	statusReporter appstatus.ServiceStatusReporter,
-	appInformer app.AppInformer,
+	options app.Options,
 ) (app.Service, error) {
 	return &serviceData{
 		cfg:            cfg.(*serviceConfig),
-		logger:         logger,
-		statusReporter: statusReporter, // this can and should be used to report service status
+		logger:         options.Logger,
+		statusReporter: options.ServiceReporter, // this can and should be used to report service status
 	}, nil
 }
 

@@ -67,17 +67,14 @@ func newServiceMetrics(registry prometheus.Registerer) *serviceMetrics {
 // FactoryForTestService returns a ready-to-run service instance
 func FactoryForTestService(
 	cfg any,
-	logger log.MetaLogger,
-	metricsRegistry *metrics.Registry,
-	statusReporter appstatus.ServiceStatusReporter,
-	appInformer app.AppInformer,
+	options app.Options,
 ) (app.Service, error) {
-	metrics := newServiceMetrics(metricsRegistry.Get())
+	metrics := newServiceMetrics(options.MetricsRegistry.Get())
 	return &serviceData{
 		cfg:            cfg.(*serviceConfig),
-		logger:         logger,
+		logger:         options.Logger,
 		metrics:        metrics,
-		statusReporter: statusReporter, // this can and should be used to report service status
+		statusReporter: options.ServiceReporter, // this can and should be used to report service status
 	}, nil
 }
 
