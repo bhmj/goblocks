@@ -39,41 +39,7 @@ func ReadFromFile(fname string, cfg any) error {
 	return parseRead(f, decoder, cfg)
 }
 
-func getConfigType(fname string) (unmarshaller, error) {
-	ext := filepath.Ext(fname)
-	switch ext {
-	case ".yaml", ".yml":
-		return yaml.Unmarshal, nil
-	case ".json":
-		return json.Unmarshal, nil
-	default:
-		return nil, fmt.Errorf("%w: %s", errConfigTypeNotSupported, ext)
-	}
-}
-
-func parseRead(f io.Reader, decoder unmarshaller, cfg any) error {
-	// pass secrets through env: manually replace {{ENV}} entries with environment values
-	conf, err := io.ReadAll(f)
-	if err != nil {
-		return fmt.Errorf("config file ReadAll: %w", err)
-	}
-	rx := regexp.MustCompile(`{{(\w+)}}`)
-	for {
-		matches := rx.FindSubmatch(conf)
-		if matches == nil {
-			break
-		}
-		v := os.Getenv(strings.ToUpper(string(matches[1])))
-		conf = bytes.ReplaceAll(conf, matches[0], []byte(v))
-	}
-
-	if err := decoder(conf, cfg); err != nil {
-		return fmt.Errorf("decoding config file: %w", err)
-	}
-
-	return DefaultsAndRequired(cfg)
-}
-
+// ParseEnvVars replaces {{VAR}} entries with respective environment values.
 func ParseEnvVars(buf []byte) []byte {
 	rx := regexp.MustCompile(`{{(\w+)}}`)
 	for {
@@ -94,6 +60,32 @@ func DefaultsAndRequired(cfg any) error {
 		return fmt.Errorf("required config parameters not set: %s", strings.Join(reqs, ", ")) //nolint:err113
 	}
 	return nil
+}
+
+func getConfigType(fname string) (unmarshaller, error) {
+	ext := filepath.Ext(fname)
+	switch ext {
+	case ".yaml", ".yml":
+		return yaml.Unmarshal, nil
+	case ".json":
+		return json.Unmarshal, nil
+	default:
+		return nil, fmt.Errorf("%w: %s", errConfigTypeNotSupported, ext)
+	}
+}
+
+func parseRead(f io.Reader, decoder unmarshaller, cfg any) error {
+	conf, err := io.ReadAll(f)
+	if err != nil {
+		return fmt.Errorf("config file ReadAll: %w", err)
+	}
+	conf = ParseEnvVars(conf)
+
+	if err := decoder(conf, cfg); err != nil {
+		return fmt.Errorf("decoding config file: %w", err)
+	}
+
+	return DefaultsAndRequired(cfg)
 }
 
 func defsAndReqs(cfg any) []string {

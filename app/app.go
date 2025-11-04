@@ -3,20 +3,17 @@ package app
 import (
 	"context"
 	"errors"
-	"flag"
 	"fmt"
 	syslog "log"
 	"os"
 	"os/signal"
 	"os/user"
-	"path/filepath"
 	"reflect"
 	"regexp"
 	"syscall"
 	"time"
 
 	"github.com/bhmj/goblocks/appstatus"
-	"github.com/bhmj/goblocks/conftool"
 	"github.com/bhmj/goblocks/gorillarouter"
 	"github.com/bhmj/goblocks/httpserver"
 	"github.com/bhmj/goblocks/log"
@@ -25,7 +22,6 @@ import (
 	"github.com/bhmj/goblocks/statserver"
 	"go.uber.org/automaxprocs/maxprocs"
 	"golang.org/x/sync/errgroup"
-	"gopkg.in/yaml.v3"
 )
 
 var (
@@ -161,97 +157,6 @@ func (a *application) Run(config any) {
 	a.runEverything(appReporter)
 
 	a.logger.Sync() //nolint:errcheck
-}
-
-func (a *application) readConfigStruct(config any) {
-	pwd, err := os.Getwd()
-	if err != nil {
-		syslog.Fatalf("get current dir: %s", err)
-	}
-	a.cfgPath = pwd
-
-	err = a.applyConfigStruct(config)
-	if err != nil {
-		syslog.Fatalf("read config data: %s", err)
-	}
-}
-
-func (a *application) readConfigFile() {
-	pstr := flag.String("config-file", "", "")
-	flag.Parse()
-	if pstr == nil || *pstr == "" {
-		syslog.Fatalf("Usage: %s --config-file=/path/to/config.yaml", os.Args[0])
-	}
-	a.cfgPath = filepath.Dir(*pstr)
-
-	fullname, err := filepath.Abs(*pstr)
-	if err != nil {
-		syslog.Fatalf("filepath: %s", err)
-	}
-	raw, err := os.ReadFile(fullname)
-	if err != nil {
-		syslog.Fatalf("read config: %s", err)
-	}
-
-	data := conftool.ParseEnvVars(raw)
-	err = a.readConfigData(data)
-	if err != nil {
-		syslog.Fatalf("read config data: %s", err)
-	}
-}
-
-func (a *application) readConfigData(data []byte) error {
-	var root yaml.Node
-
-	cfg := make(map[string]any)
-
-	for name, reg := range a.serviceDefs {
-		cfg[name] = reg.Config
-	}
-
-	if err := yaml.Unmarshal(data, &root); err != nil {
-		return err
-	}
-
-	if len(root.Content) == 0 {
-		return errEmptyConfig
-	}
-
-	mapping := root.Content[0] // top-level mapping
-	rootNodes := make(map[string]*yaml.Node)
-	for i := 0; i < len(mapping.Content); i += 2 {
-		key := mapping.Content[i].Value
-		val := mapping.Content[i+1]
-		rootNodes[key] = val
-	}
-
-	// decode app config
-	if node, ok := rootNodes["app"]; ok {
-		if err := node.Decode(a.cfg); err != nil {
-			return fmt.Errorf("app config: %w", err)
-		}
-	}
-	if err := conftool.DefaultsAndRequired(a.cfg); err != nil {
-		return fmt.Errorf("app config: missing required value: %w", err)
-	}
-
-	// decode configs for all registered services
-	for name, service := range a.serviceDefs {
-		node, ok := rootNodes[name]
-		if !ok {
-			continue
-		}
-		if err := node.Decode(service.Config); err != nil {
-			return fmt.Errorf("decode %s: %w", name, err)
-		}
-	}
-	for name, service := range a.serviceDefs {
-		if err := conftool.DefaultsAndRequired(service.Config); err != nil {
-			return fmt.Errorf("%s config: missing required value: %w", name, err)
-		}
-	}
-
-	return nil
 }
 
 // Run starts the application
