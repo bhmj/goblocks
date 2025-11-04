@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/bhmj/goblocks/dbase/abstract"
+	"github.com/bhmj/goblocks/file"
 	"github.com/bhmj/goblocks/log"
 )
 
@@ -36,8 +37,13 @@ func (m *Migrator) Migrate(basePath string) error {
 		return err
 	}
 
+	basePath, err = file.NormalizePath(basePath)
+	if err != nil {
+		return err
+	}
+
 	if _, err = os.Stat(basePath); os.IsNotExist(err) {
-		m.logger.Warn("migrator", log.Error(errMigrationDirNotFound))
+		m.logger.Warn("migrator", log.Error(errMigrationDirNotFound), log.String("normalized path", basePath))
 		return errMigrationDirNotFound
 	}
 

@@ -13,19 +13,6 @@ import (
 	"github.com/bhmj/goblocks/str"
 )
 
-type FileInterface interface { //nolint:revive
-	Exists(fname string) bool
-	Copy(src, dest string) (int64, error)
-	Delete(fname string) error
-	Mkdir(path string) error
-	Rmdir(path string) error
-	Move(src, dst string) error
-	URLFileExtension(addr string) string
-	Read(fname string) (contents []byte, err error)
-	TouchWithPath(fname string, template string) error
-	ClearDirectory(path string) error
-}
-
 func Exists(fname string) bool {
 	if fname == "" {
 		return false
@@ -150,4 +137,27 @@ func ClearDirectory(path string, flat bool) error {
 	}
 
 	return nil
+}
+
+func NormalizePath(path string) (string, error) {
+	if strings.HasPrefix(path, "~") {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", fmt.Errorf("cannot resolve home directory: %w", err)
+		}
+		if path == "~" {
+			path = home
+		} else if strings.HasPrefix(path, "~/") {
+			path = filepath.Join(home, path[2:])
+		}
+	}
+
+	absPath, err := filepath.Abs(path)
+	if err != nil {
+		return "", fmt.Errorf("cannot make absolute path: %w", err)
+	}
+
+	cleanPath := filepath.Clean(absPath)
+
+	return cleanPath, nil
 }
