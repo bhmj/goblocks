@@ -34,6 +34,7 @@ type Options struct {
 	Logger          log.MetaLogger
 	MetricsRegistry *metrics.Registry
 	ServiceReporter appstatus.ServiceStatusReporter
+	Production      bool
 	ConfigPath      string
 }
 

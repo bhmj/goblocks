@@ -145,6 +145,7 @@ func (a *application) Run(config any) {
 			Logger:          a.logger,
 			MetricsRegistry: metricsRegistry,
 			ServiceReporter: serviceReporter,
+			Production:      a.cfg.Production,
 			ConfigPath:      a.cfgPath,
 		}
 		service, err := reg.Factory(reg.Config, options)
