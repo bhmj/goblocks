@@ -5,7 +5,7 @@ This implements [zap](https://pkg.go.dev/go.uber.org/zap)-based meta logger with
 ### Usage
 
 ```Go
-import "github.com/workato/engine-packages/log"
+import "github.com/bhmj/goblocks/log"
 
 logLevel := "info"
 oneLiner := false
@@ -61,7 +61,7 @@ Note that the whole log record has "warn" type as it is the highest level of all
 
 When merging multiple log records into a single one we need to set a message (`msg` field) for the whole record. Naturally you want it to be the most informative among all records, for example it may be the type of the endpoint currently working or something similar. If nothing is specified explicitly the **first message** of the highest level is used.
 
-However, since we can switch oneliner mode on and off, we may want to explicitly mark the main message which should be selected amonth other messages of the same level. You may do it using `MainMessage()` method:
+However, since we can switch oneliner mode on and off, we may want to explicitly mark the main message which should be selected among other messages of the same level. You may do it using `MainMessage()` method:
 
 ```Go
 logger.Info("start request", log.String("connections", conns))
