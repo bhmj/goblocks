@@ -75,6 +75,8 @@ func panicLoggerMiddleware(next http.Handler, logger log.MetaLogger) http.Handle
 
 func instrumentationMiddleware(handler HandlerWithResult, logger log.MetaLogger, metrics *serviceMetrics, service, endpoint string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		_ = r.ParseForm()
+
 		// get real remote address
 		remoteAddr := r.RemoteAddr
 		if x, found := r.Header["X-Forwarded-For"]; found {

@@ -49,6 +49,10 @@ The "app" config section (the structure is located in [/app/config.go](https://g
 
  Configuration values can be automatically taken from environment variables using the `my_key: {{ENV_VARIABLE}}` syntax. This approach combines the best of both worlds: setting parameters via env variables while keeping them organized in a human-readable, structured YAML format.
 
+## Considerations and gotchas
+
+- you don't need to call `r.ParseForm()` in your handlers: the middleware does it. Just use `r.Form["param"]`.
+
 ## Roadmap
 
  - [x] Basic blocks
