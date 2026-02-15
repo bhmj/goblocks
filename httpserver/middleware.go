@@ -133,7 +133,7 @@ func instrumentationMiddleware(
 		startTime := time.Now()
 		code, err := handler(w, r.WithContext(ctx))
 		defer metrics.ScoreMethod(service, endpoint, startTime, err)
-		contextLogger.Info("finish")
+		contextLogger.Info("finish", log.Duration("took", time.Since(startTime)))
 		// errorer
 		if err != nil {
 			contextLogger.Error("runtime", log.String("rid", reqID), log.Error(err), log.MainMessage())
