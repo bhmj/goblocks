@@ -38,7 +38,7 @@ The configuration for the entire app is located in a single file. The settings a
 The "app" config section (the structure is located in [/app/config.go](https://github.com/bhmj/goblocks/blob/master/app/config.go)) covers the most fundamental settings:
    - "http" group defines server params: ports, TLS, auth token, limits and timeouts, metrics;
    - "sentry" group defines Sentry DSN;
-   - "log_level" and "production" define general env settings.
+   - "logLevel" and "production" define general env settings.
 
  The service section(s) of the config is totally defined by the user. In the "factorial" example it contains "apiRoot" and "countBits". These are per-service business logic specific parameters.
 
