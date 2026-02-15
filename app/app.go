@@ -182,7 +182,7 @@ func (a *application) runEverything(appReporter appstatus.ServiceStatusReporter)
 
 	// run services
 	for name, service := range a.services {
-		a.addHandlers(name, service.GetHandlers())
+		a.addHandlers(name, service.GetHandlers(), service.GetSessionData)
 		eg.Go(func() error {
 			return service.Run(ctx)
 		})
@@ -218,8 +218,13 @@ func (a *application) runEverything(appReporter appstatus.ServiceStatusReporter)
 	a.logger.Info("terminated successfully")
 }
 
-func (a *application) addHandlers(service string, handlers []HandlerDefinition) {
+func (a *application) addHandlers(service string, handlers []HandlerDefinition, sessionGetter httpserver.SessionDataGetter) {
 	for _, h := range handlers {
-		a.httpServer.HandleFunc(service, h.Endpoint, h.Method, h.Path, h.Func)
+		if !h.Options.SIDRequired {
+			sessionGetter = nil // do not query user storage
+		} else if sessionGetter == nil {
+			a.logger.Fatal("SID required but no session getter provided", log.String("service", service), log.String("endpoint", h.Endpoint))
+		}
+		a.httpServer.HandleFunc(service, h.Endpoint, h.Method, h.Path, h.Func, sessionGetter)
 	}
 }

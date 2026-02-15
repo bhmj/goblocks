@@ -33,10 +33,10 @@ func (m *Message) WithButton(text string, fn UserCallback) *Message {
 func (m *Message) Send() error {
 	var replyMarkup *InlineKeyboardMarkup
 	if len(m.buttons) > 0 {
-		buttons := []InlineKeyboardButton{}
+		buttons := make([]InlineKeyboardButton, len(m.buttons))
 		for i, btn := range m.buttons {
 			cData := fmt.Sprintf("%d:%d", m.id, i)
-			buttons = append(buttons, InlineKeyboardButton{Text: btn, CallbackData: cData})
+			buttons[i] = InlineKeyboardButton{Text: btn, CallbackData: cData}
 		}
 		replyMarkup = &InlineKeyboardMarkup{InlineKeyboard: [][]InlineKeyboardButton{buttons}}
 	}

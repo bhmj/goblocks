@@ -21,15 +21,21 @@ type HandlerDefinition struct {
 	Method   string // GET, POST, etc.
 	Path     string // URL path (Gorilla URL vars allowed)
 	Func     httpserver.HandlerWithResult
+	Options  HandlerOptions
+}
+
+type HandlerOptions struct {
+	SIDRequired bool // if true, the handler will query session data using SID cookie and pass it to the handler via context
 }
 
 // Service is an interface that application services should implement
 type Service interface {
+	GetSessionData(SID string) (any, error)
 	GetHandlers() []HandlerDefinition
 	Run(ctx context.Context) error
 }
 
-// AppInfo contains general app information and settings
+// Options contains general app information and settings
 type Options struct {
 	Logger          log.MetaLogger
 	MetricsRegistry *metrics.Registry

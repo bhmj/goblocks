@@ -17,8 +17,8 @@ import (
 type Config struct {
 	Endpoint string `yaml:"endpoint" description:"Telegram callback endpoint"`
 	Port     int    `yaml:"port" description:"Telegram callback port"`
-	BotToken string `yaml:"bot_token" description:"Telegram bot token"`
-	ChatID   int64  `yaml:"chat_id" description:"Default target chat ID"`
+	BotToken string `yaml:"botToken" description:"Telegram bot token"`
+	ChatID   int64  `yaml:"chatID" description:"Default target chat ID"` //nolint:tagliatelle
 }
 
 func New(cfg Config, logger log.MetaLogger) Telegram {

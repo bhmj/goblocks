@@ -4,7 +4,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"log"
 	syslog "log"
 	"os"
 	"path/filepath"
@@ -37,7 +36,7 @@ func (a *application) readConfigStruct(config any) {
 // readConfigFile reads config from the file specified by `--config-file`
 func (a *application) readConfigFile() {
 	pstr := flag.String("config-file", "", "Application YAML config file")
-	print := flag.String("print-config", "", "Print complete config")
+	doPrint := flag.String("print-config", "", "Print complete config")
 	flag.Parse()
 	if pstr == nil || *pstr == "" {
 		syslog.Fatalf("Usage: %s --config-file=/path/to/config.yaml", os.Args[0])
@@ -58,7 +57,7 @@ func (a *application) readConfigFile() {
 	if err != nil {
 		syslog.Fatalf("read config data: %s", err)
 	}
-	if print != nil {
+	if doPrint != nil {
 		a.printConfig()
 	}
 }
@@ -213,10 +212,10 @@ func (a *application) printConfig() {
 	}
 
 	encoder := yaml.NewEncoder(os.Stdout)
-	encoder.SetIndent(2)
+	encoder.SetIndent(2) //nolint:mnd
 	defer encoder.Close()
 
 	if err := encoder.Encode(allConfigs); err != nil {
-		log.Fatalf("error encoding YAML: %v", err)
+		syslog.Fatalf("error encoding YAML: %v", err)
 	}
 }

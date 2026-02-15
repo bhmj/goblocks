@@ -71,8 +71,6 @@ func (p *Policy) Run(fn func(attempt int) (err error, fatal error)) error {
 func (p *Policy) calcSleepTime(attempt int) time.Duration {
 	jitter := time.Duration(rand.Float64() * float64(p.Jitter)) //nolint:gosec
 	sleepTime := time.Duration(float64(p.Backoff)*math.Pow(p.Multiplier, float64(attempt-1))) + jitter
-	if sleepTime > p.MaxBackoff {
-		sleepTime = p.MaxBackoff
-	}
+	sleepTime = min(sleepTime, p.MaxBackoff)
 	return sleepTime
 }

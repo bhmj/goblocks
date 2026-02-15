@@ -18,6 +18,7 @@ Any service built with **Goblocks App** framework contains out of the box:
  - **Kubernetes health endpoints**
  - Advanced **logging** (based on Zap)
  - **HTTP replying methods**
+ - **Cookie-based session support**
  - Simple yet powerful **configuration settings** for all the above
 
 ## Getting started
@@ -39,7 +40,7 @@ The "app" config section (the structure is located in [/app/config.go](https://g
    - "sentry" group defines Sentry DSN;
    - "log_level" and "production" define general env settings.
 
- The service section(s) of the config is totally defined by the user. In the "factorial" example it contains "api_base" and "count_bits". These are per-service business logic specific parameters.
+ The service section(s) of the config is totally defined by the user. In the "factorial" example it contains "apiRoot" and "countBits". These are per-service business logic specific parameters.
 
  If you have multiple services, each service has its own named section in config file.
 
@@ -49,17 +50,25 @@ The "app" config section (the structure is located in [/app/config.go](https://g
 
  Configuration values can be automatically taken from environment variables using the `my_key: {{ENV_VARIABLE}}` syntax. This approach combines the best of both worlds: setting parameters via env variables while keeping them organized in a human-readable, structured YAML format.
 
+## Sessions
+
+Starting from v0.5.0 the framework requires the service to have `GetSessionData(SID int) (Data any, error nul)` method. This method is called by the framework middleware for every endpoint having `Options.SIDRequired = true`. The endpoint reads the session data from the context using `httpserver.ContextSessionData` key.
+
 ## Considerations and gotchas
 
 - you don't need to call `r.ParseForm()` in your handlers: the middleware does it. Just use `r.Form["param"]`.
+
+## Breaking changes
+
+ * **v0.5.0**: in `dbase.Config` the ConnString field now has camelCase in yaml, not snake case: ~~`conn_string`~~ -> `connString`
 
 ## Roadmap
 
  - [x] Basic blocks
  - [x] App framework
  - [x] Config file loading
- - [ ] Session tracking
- - [ ] DB support with migrations
+ - [x] Session tracking
+ - [x] DB support with migrations
  - [ ] Templating support
  - [ ] Form support
 

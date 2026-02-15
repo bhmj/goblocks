@@ -17,9 +17,9 @@ var (
 )
 
 type pgxQuerier interface {
-	Query(ctx context.Context, query string, args ...interface{}) (pgx.Rows, error)
-	QueryRow(ctx context.Context, sql string, args ...interface{}) pgx.Row
-	Exec(ctx context.Context, sql string, arguments ...interface{}) (pgconn.CommandTag, error)
+	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
+	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 }
 
 type Psql struct {
@@ -85,14 +85,14 @@ func (p *Psql) Connect() error {
 	return p.pool.Ping(p.ctx) //nolint:wrapcheck
 }
 
-func (p *Psql) Query(dst interface{}, query string, args ...interface{}) error {
+func (p *Psql) Query(dst any, query string, args ...any) error {
 	if len(args) == 0 {
 		return pgxscan.Select(p.ctx, p.conn, dst, query) //nolint:wrapcheck
 	}
 	return pgxscan.Select(p.ctx, p.conn, dst, query, args...) //nolint:wrapcheck
 }
 
-func (p *Psql) QueryRow(dst interface{}, query string, args ...interface{}) (bool, error) {
+func (p *Psql) QueryRow(dst any, query string, args ...any) (bool, error) {
 	var err error
 	if len(args) == 0 {
 		err = pgxscan.Get(p.ctx, p.conn, dst, query)
@@ -105,12 +105,12 @@ func (p *Psql) QueryRow(dst interface{}, query string, args ...interface{}) (boo
 	return err == nil, err //nolint:wrapcheck
 }
 
-func (p *Psql) QueryValue(dst interface{}, query string, args ...interface{}) error {
+func (p *Psql) QueryValue(dst any, query string, args ...any) error {
 	row := p.conn.QueryRow(p.ctx, query, args...)
 	return row.Scan(dst) //nolint:wrapcheck
 }
 
-func (p *Psql) Exec(query string, args ...interface{}) error {
+func (p *Psql) Exec(query string, args ...any) error {
 	if len(args) == 0 {
 		_, err := p.conn.Exec(p.ctx, query)
 		return err //nolint:wrapcheck

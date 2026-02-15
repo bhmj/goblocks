@@ -56,7 +56,7 @@ type MetaLogger interface { //nolint:interfacebloat
 	DPanic(msg string, fields ...Field)
 	Panic(msg string, fields ...Field)
 	Fatal(msg string, fields ...Field)
-	Infof(template string, args ...interface{})
+	Infof(template string, args ...any)
 	Add(fields ...Field)
 	With(fields ...Field) MetaLogger
 	Sync() error
@@ -205,7 +205,7 @@ func convert(fields []Field) []zap.Field {
 		case Float64Type:
 			zapfields = append(zapfields, zap.Float64(field.Key, field.Float64))
 		case Float64pType:
-			zapfields = append(zapfields, zap.Float64p(field.Key, field.Interface.(*float64)))
+			zapfields = append(zapfields, zap.Float64p(field.Key, field.Interface.(*float64))) //nolint:forcetypeassert
 		case StringType:
 			zapfields = append(zapfields, zap.String(field.Key, field.String))
 		case StringsType:
@@ -253,7 +253,7 @@ func (l *logger) Fatal(msg string, fields ...Field) {
 	l.log(int(zap.FatalLevel), msg, fields...)
 }
 
-func (l *logger) Infof(template string, args ...interface{}) {
+func (l *logger) Infof(template string, args ...any) {
 	l.externalLogger.Sugar().Infof(template, args...)
 }
 

@@ -1,6 +1,7 @@
 package mailer
 
 import (
+	"bytes"
 	"fmt"
 	"net/smtp"
 )
@@ -42,14 +43,14 @@ func (m *mailer) SendMailHTML(to, subject, body string) error {
 		"Subject":      subject,
 		"Content-Type": "text/html; charset=utf-8",
 	}
-	message := ""
+	var message bytes.Buffer
 	for key, value := range headers {
-		message += fmt.Sprintf("%s: %s\r\n", key, value)
+		message.WriteString(fmt.Sprintf("%s: %s\r\n", key, value))
 	}
-	message += "\r\n" + body
+	message.WriteString("\r\n" + body)
 
 	auth := smtp.PlainAuth("", m.Username, m.Password, m.Server)
-	err := smtp.SendMail(fmt.Sprintf("%s:%d", m.Server, m.Port), auth, m.From, []string{to}, []byte(message))
+	err := smtp.SendMail(fmt.Sprintf("%s:%d", m.Server, m.Port), auth, m.From, []string{to}, message.Bytes())
 	if err != nil {
 		return fmt.Errorf("send: %w", err)
 	}

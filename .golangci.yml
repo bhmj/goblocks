@@ -13,6 +13,7 @@ linters:
     - godot                      # too opinionated
     - ireturn                    # I don't care for returning interfaces. It's easier this way
     - noinlineerr                # my code, my inlining
+    - nonamedreturns             # my code, my named returns
     - nlreturn                   # too opinionated
     - tagalign                   # too opinionated
     - varnamelen                 # I decide if the variable name is long enough
@@ -45,7 +46,7 @@ linters:
           # any struct tag type can be used.
           # support string case: `camel`, `pascal`, `kebab`, `snake`, `goCamel`, `goPascal`, `goKebab`, `goSnake`, `upper`, `lower`
           json: snake
-          yaml: snake
+          yaml: camel
         use-field-name: true
   exclusions:
     generated: lax

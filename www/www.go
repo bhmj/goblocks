@@ -11,22 +11,21 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/bhmj/goblocks/file"
 )
 
-var (
-	client *http.Client
-)
+var client *http.Client //nolint:gochecknoglobals
 
-type timeoutErrorType struct{}
+type timeoutError struct{}
 
-func (t *timeoutErrorType) Error() string { return "timeout" }
+func (t *timeoutError) Error() string { return "timeout" }
 
-const getTimeout = time.Duration(444 * time.Second) // FIXME
+const getTimeout = 444 * time.Second // FIXME
 
-func init() {
+func init() { //nolint:gochecknoinits
 	client = &http.Client{
 		Timeout: getTimeout,
 	}
@@ -42,7 +41,7 @@ func setHeaders(req *http.Request) {
 	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36")
 }
 
-type WWWInterface interface {
+type Interface interface {
 	// async download to file
 	EnqueueDownload(url, root, path string) (extPath string, err error)
 	// sync download to file
@@ -65,7 +64,7 @@ func EnqueueDownload(url, root, path string, sct SetContentType) (extPath string
 
 	contentType, fileSize, err = Download(url, root, path, fname)
 
-	var timeoutErr *timeoutErrorType
+	var timeoutErr *timeoutError
 	if errors.As(err, &timeoutErr) {
 		go func() {
 			retryPolicy := []int{2, 4, 8, 16, 32, 64, 128}
@@ -101,7 +100,7 @@ func DownloadContent(url, root, path string) (string, []byte, string, int64, err
 	return extPath, buf.Bytes(), contentType, fileSize, err
 }
 
-// FetchContent attempts to download a file and return its content along with a new URL if redirect occured.
+// FetchContent attempts to download a file and return its content along with a new URL if redirect occurred.
 func FetchContent(url string, opts ...RequestOpt) ([]byte, string, *url.URL, int64, error) {
 	buf := &bytes.Buffer{}
 	contentType, newURL, fileSize, err := Fetch(url, "", "", "", buf, opts...)
@@ -109,41 +108,41 @@ func FetchContent(url string, opts ...RequestOpt) ([]byte, string, *url.URL, int
 }
 
 // Fetch downloads a file specified in uri, saves it to root+path+fname (if fname specified), copies the body content into buf
-// (if buf specified) and returns newURL if redirect occured.
+// (if buf specified) and returns newURL if redirect occurred.
 func Fetch(url, root, path, fname string, buf io.Writer, opts ...RequestOpt) (contentType string, newURL *url.URL, fileSize int64, err error) {
 	body, contentType, newURL, err := getResponse(url, opts...)
 	if err != nil {
-		return
+		return //nolint:nakedret
 	}
 	defer body.Close()
 
-	if fname != "" {
-		// save to file; optionally read to buf
-		fpath := filepath.Join(root, path)
-		if !file.Exists(fpath) {
-			if err = file.Mkdir(fpath); err != nil {
-				return
-			}
-		}
-		fullPath := filepath.Join(fpath, fname)
-		var file *os.File
-		file, err = os.Create(fullPath)
-		if err != nil {
-			return
-		}
-		defer file.Close()
-
-		reader := body.(io.Reader)
-		if buf != nil {
-			reader = io.TeeReader(body, buf)
-		}
-		fileSize, err = io.Copy(file, reader)
-	} else {
-		// read to buf
+	if fname == "" {
 		fileSize, err = io.Copy(buf, body)
+		return //nolint:nakedret
 	}
 
-	return
+	// save to file; optionally read to buf
+	fpath := filepath.Join(root, path)
+	if !file.Exists(fpath) {
+		if err = file.Mkdir(fpath); err != nil {
+			return //nolint:nakedret
+		}
+	}
+	fullPath := filepath.Join(fpath, fname)
+	var file *os.File
+	file, err = os.Create(fullPath)
+	if err != nil {
+		return //nolint:nakedret
+	}
+	defer file.Close()
+
+	reader := body.(io.Reader) //nolint:forcetypeassert
+	if buf != nil {
+		reader = io.TeeReader(body, buf)
+	}
+	fileSize, err = io.Copy(file, reader)
+
+	return //nolint:nakedret
 }
 
 type RequestOpt int
@@ -164,70 +163,90 @@ type gzipReadCloser struct {
 func (z gzipReadCloser) Read(p []byte) (int, error) {
 	return z.gzreader.Read(p)
 }
+
 func (z gzipReadCloser) Close() error {
 	return z.body.Close()
 }
 
-// getResponse
-func getResponse(uri string, opts ...RequestOpt) (io.ReadCloser, string, *url.URL, error) {
-	opt := func(chk RequestOpt) bool {
-		for _, val := range opts {
-			if val == chk {
-				return true
-			}
-		}
-		return false
+func hasOpt(opts []RequestOpt, chk RequestOpt) bool {
+	return slices.Contains(opts, chk)
+}
+
+// ignorableStatus maps HTTP status codes to the RequestOpt that allows ignoring them.
+var ignorableStatus = map[int]RequestOpt{ //nolint:gochecknoglobals
+	http.StatusForbidden:                  ReqIgnore403,
+	http.StatusNotFound:                   ReqIgnore404,
+	http.StatusNotAcceptable:              ReqIgnore406,
+	http.StatusGone:                       ReqIgnore410,
+	http.StatusUnavailableForLegalReasons: ReqIgnore451,
+}
+
+func checkStatusCode(response *http.Response, opts []RequestOpt) error {
+	if response.StatusCode == http.StatusOK {
+		return nil
 	}
+	if opt, ok := ignorableStatus[response.StatusCode]; ok && hasOpt(opts, opt) {
+		return nil
+	}
+	b, _ := io.ReadAll(response.Body)
+	response.Body.Close()
+	return fmt.Errorf("received non 200 response code: %v; %s", response.StatusCode, string(b))
+}
+
+func wrapGzipBody(response *http.Response) (io.ReadCloser, error) {
+	if response.Header.Get("Content-Encoding") != "gzip" {
+		return response.Body, nil
+	}
+	gr, err := gzip.NewReader(response.Body)
+	if err != nil {
+		response.Body.Close()
+		return nil, err
+	}
+	return gzipReadCloser{body: response.Body, gzreader: gr}, nil
+}
+
+func redirectURL(response *http.Response) *url.URL {
+	if response.Request != nil {
+		return response.Request.URL
+	}
+	return nil
+}
+
+func doRequest(uri string) (*http.Response, error) {
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodGet, uri, nil)
 	if err != nil {
-		return nil, "", nil, err // nolint:wrapcheck
+		return nil, err
 	}
 	setHeaders(req)
 	response, err := client.Do(req)
 	if err != nil {
 		if os.IsTimeout(err) {
-			return nil, "", nil, &timeoutErrorType{}
+			return nil, &timeoutError{}
 		}
-		return nil, "", nil, err // nolint:wrapcheck
+		return nil, err
+	}
+	return response, nil
+}
+
+// getResponse
+func getResponse(uri string, opts ...RequestOpt) (io.ReadCloser, string, *url.URL, error) {
+	response, err := doRequest(uri)
+	if err != nil {
+		return nil, "", nil, err
 	}
 
-	body := response.Body
-	if response.Header.Get("Content-Encoding") == "gzip" {
-		gr, err := gzip.NewReader(response.Body)
-		if err != nil {
-			response.Body.Close()
-			return nil, "", nil, err
-		}
-		body = gzipReadCloser{
-			body:     response.Body,
-			gzreader: gr,
-		}
+	newURL := redirectURL(response)
+
+	if err := checkStatusCode(response, opts); err != nil {
+		return nil, "", newURL, err
 	}
 
-	var newURL *url.URL
-	if response.Request != nil {
-		newURL = response.Request.URL
+	body, err := wrapGzipBody(response)
+	if err != nil {
+		return nil, "", nil, err
 	}
 
-	switch {
-	case response.StatusCode == http.StatusOK:
-	case response.StatusCode == http.StatusForbidden && opt(ReqIgnore403):
-	case response.StatusCode == http.StatusNotFound && opt(ReqIgnore404):
-	case response.StatusCode == http.StatusNotAcceptable && opt(ReqIgnore406):
-	case response.StatusCode == http.StatusGone && opt(ReqIgnore410):
-	case response.StatusCode == http.StatusUnavailableForLegalReasons && opt(ReqIgnore451):
-		break
-	default:
-		b, _ := io.ReadAll(response.Body)
-		response.Body.Close()
-		return nil, "", newURL, fmt.Errorf("received non 200 response code: %v; %s", response.StatusCode, string(b)) // nolint:goerr113
-	}
-
-	contentType := ""
-	cts := response.Header["Content-Type"]
-	if len(cts) > 0 {
-		contentType = cts[0] // first occurrence
-	}
+	contentType := response.Header.Get("Content-Type")
 
 	return body, contentType, newURL, nil
 }

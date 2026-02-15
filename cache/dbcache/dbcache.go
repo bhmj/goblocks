@@ -30,6 +30,9 @@ func New(db abstract.DB, logger log.MetaLogger, cacheDir string) Cache {
 	}
 }
 
+// GetURL returns path to the cached file for the given URL.
+// If the file is not cached, it downloads it and stores in cache before
+// returning the path.
 func (c *cache) GetURL(url string) (extPath string, err error) {
 	extPath, _ = c.getCacheRecord(url)
 	fullPath := filepath.Join(c.cacheDir, extPath)
@@ -45,6 +48,9 @@ func (c *cache) GetURL(url string) (extPath string, err error) {
 	return
 }
 
+// GetContent returns content of the file from cache or downloads it if not cached.
+// It also updates content type and file size in cache if they were missing.
+// Returns content, content type and error if any.
 func (c *cache) GetContent(url string) (body []byte, contentType string, err error) {
 	extPath, contentType := c.getCacheRecord(url)
 	fullPath := filepath.Join(c.cacheDir, extPath)

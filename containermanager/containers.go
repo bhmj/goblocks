@@ -21,6 +21,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -180,10 +181,8 @@ func (cm *containerManager) ImageExist(image string) error {
 		return err
 	}
 	for _, im := range ims {
-		for _, tag := range im.RepoTags {
-			if tag == image {
-				return nil
-			}
+		if slices.Contains(im.RepoTags, image) {
+			return nil
 		}
 	}
 	return fmt.Errorf("docker image not found, consider creating or pulling: %s", image) //nolint:err113
@@ -216,7 +215,7 @@ func (cm *containerManager) unregisterContainer(id string) {
 // CreateAndRunContainer creates and runs the container in sleep mode. Returns ID of a confirmed running container.
 func (cm *containerManager) CreateAndRunContainer(setup *ContainerSetup) (string, error) { //nolint:funlen
 	const MBytes = 1024 * 1024
-	var mounts []dockermount.Mount //nolint:prealloc
+	var mounts []dockermount.Mount
 
 	// create working dir if not exists
 	err := file.Mkdir(setup.WorkingDir)

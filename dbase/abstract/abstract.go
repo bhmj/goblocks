@@ -5,9 +5,9 @@ type DB interface {
 	Rollback() error
 	Commit() error
 	Connect() error
-	Query(dst interface{}, query string, args ...interface{}) error
-	QueryRow(dst interface{}, query string, args ...interface{}) (bool, error)
-	QueryValue(dst interface{}, query string, args ...interface{}) error
-	Exec(query string, args ...interface{}) error
+	Query(dst any, query string, args ...any) error
+	QueryRow(dst any, query string, args ...any) (bool, error)
+	QueryValue(dst any, query string, args ...any) error
+	Exec(query string, args ...any) error
 	Close()
 }

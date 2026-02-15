@@ -3,7 +3,7 @@ app:
     port: 8080
     metrics:
       namespace: factorial
-  shutdown_delay: 0s
+  shutdownDelay: 0s
 factorial:
-  api_base: /api/v1
-  count_bits: true
+  apiRoot: /api/v1
+  countBits: true

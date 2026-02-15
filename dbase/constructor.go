@@ -12,7 +12,7 @@ import (
 
 type Config struct {
 	Type       string `yaml:"type" description:"DB type" default:"postgres" choice:"postgres,mysql,sqlite,oracle,sqlserver"`
-	ConnString string `yaml:"conn_string" description:"DB connection string" required:"true"`
+	ConnString string `yaml:"connString" description:"DB connection string" required:"true"`
 	Migrations string `yaml:"migrations" description:"DB migrations path"`
 }
 

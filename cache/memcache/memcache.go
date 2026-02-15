@@ -7,7 +7,7 @@ import (
 )
 
 /*
-	Memory cache for arbirtary data.
+	Memory cache for arbitrary data.
 	Size-based eviction (no TTL).
 	On eviction deletes LRU items amongst those older than `keepFirst` minutes.
 
@@ -17,10 +17,10 @@ import (
 const keepFirst = time.Minute * 5 // no-eviction time
 
 type cacheRec struct {
-	Value       interface{} // 16
-	ContentType string      // 16
-	AddedAt     int64       // 8
-	UseCount    int         // 8
+	Value       any    // 16
+	ContentType string // 16
+	AddedAt     int64  // 8
+	UseCount    int    // 8
 }
 
 type cache struct {
@@ -31,8 +31,8 @@ type cache struct {
 }
 
 type Cache interface {
-	Get(key string) (interface{}, string, bool) // value, content-type, found
-	Set(key string, value interface{}, contentType ...string)
+	Get(key string) (any, string, bool) // value, content-type, found
+	Set(key string, value any, contentType ...string)
 	Del(key string)
 	Cleanup()
 	Size() int
@@ -52,7 +52,7 @@ func New(size int) Cache {
 }
 
 // Get retrieves value from cache, nil if not found.
-func (c *cache) Get(key string) (interface{}, string, bool) {
+func (c *cache) Get(key string) (any, string, bool) {
 	c.Lock()
 	defer c.Unlock()
 	if v, found := c.storage[key]; found {
@@ -63,7 +63,7 @@ func (c *cache) Get(key string) (interface{}, string, bool) {
 }
 
 // Set stores a value in cache, evicting stale elements if needed. Can skip storing if the cache is full and no evictable entries found.
-func (c *cache) Set(key string, value interface{}, contentType ...string) {
+func (c *cache) Set(key string, value any, contentType ...string) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -141,14 +141,14 @@ func (c *cache) evict() bool {
 }
 
 // stale moves cache entry back in time so it can be evicted (test only function)
-func (c *cache) stale(key string) {
+func (c *cache) stale(key string) { //nolint:unused
 	c.Lock()
 	defer c.Unlock()
 	if v, found := c.storage[key]; found {
-		c.storage[key] = &cacheRec{Value: v.Value, UseCount: v.UseCount, AddedAt: time.Now().Add(-keepFirst * 2).Unix()}
+		c.storage[key] = &cacheRec{Value: v.Value, UseCount: v.UseCount, AddedAt: time.Now().Add(-keepFirst * 2).Unix()} //nolint:mnd
 	}
 }
 
-func valueSize(value interface{}) int {
+func valueSize(value any) int {
 	return int(reflect.TypeOf(value).Size())
 }

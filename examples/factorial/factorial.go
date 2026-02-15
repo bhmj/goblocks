@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	syslog "log"
 	"math/big"
@@ -19,8 +20,8 @@ const serviceName = "factorial"
 
 // the service config data is located in the single yaml file under the "{service_name}" key
 type serviceConfig struct {
-	APIBase   string `yaml:"api_base" default:"/api"`
-	CountBits bool   `yaml:"count_bits" default:"false"`
+	APIRoot   string `yaml:"apiRoot" default:"/api"`
+	CountBits bool   `yaml:"countBits" default:"false"`
 }
 
 // main service structure
@@ -35,8 +36,12 @@ func FactorialServiceFactory(
 	cfg any,
 	options app.Options,
 ) (app.Service, error) {
+	config, ok := cfg.(*serviceConfig)
+	if !ok {
+		return nil, errors.New("invalid config type")
+	}
 	return &serviceData{
-		cfg:            cfg.(*serviceConfig),
+		cfg:            config,
 		logger:         options.Logger,
 		statusReporter: options.ServiceReporter, // this can and should be used to report service status
 	}, nil
@@ -48,10 +53,14 @@ func (s *serviceData) GetHandlers() []app.HandlerDefinition {
 		{
 			Endpoint: "factorial",
 			Method:   "GET",
-			Path:     s.cfg.APIBase + "/factorial/{number:[0-9]+}",
+			Path:     s.cfg.APIRoot + "/factorial/{number:[0-9]+}",
 			Func:     s.factorialHandler,
 		},
 	}
+}
+
+func (s *serviceData) GetSessionData(_ string) (any, error) {
+	return nil, nil //nolint:nilnil
 }
 
 // sample service handler with business logic
@@ -94,7 +103,7 @@ func (s *serviceData) Run(ctx context.Context) error {
 	return nil
 }
 
-var appVersion = "0.1.0"
+var appVersion = "0.1.0" //nolint:gochecknoglobals
 
 func main() {
 	app := app.New("factorial", appVersion)

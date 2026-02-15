@@ -32,7 +32,7 @@ const serviceName = "test_service"
 
 // the service config data is located in the single yaml file under the "{service_name}" key
 type serviceConfig struct {
-	APIBase string `yaml:"api_base"`
+	APIRoot string `yaml:"apiRoot"`
 	Setting string `yaml:"setting" default:"default setting"`
 }
 
@@ -84,16 +84,21 @@ func (s *serviceData) GetHandlers() []app.HandlerDefinition {
 		{
 			Endpoint: "factorial",
 			Method:   "GET",
-			Path:     s.cfg.APIBase + "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
+			Path:     s.cfg.APIRoot + "/factorial/{number:[0-9a-z]+}", // the error in regex is deliberate for test purposes
 			Func:     s.factorialHandler,
 		},
 		{
 			Endpoint: "settings",
 			Method:   "GET",
-			Path:     s.cfg.APIBase + "/settings",
+			Path:     s.cfg.APIRoot + "/settings",
 			Func:     s.settingsHandler,
 		},
 	}
+}
+
+// GetSessionData returns session data extracted from the storage using SID cookie.
+func (s *serviceData) GetSessionData(SID string) (any, error) {
+	return nil, nil
 }
 
 // sample service handler with business logic
@@ -242,7 +247,7 @@ func CreateTestConfig() *TestConfig {
 			},
 		},
 		Service: serviceConfig{
-			APIBase: "api",
+			APIRoot: "api",
 			Setting: "my setting",
 		},
 	}
