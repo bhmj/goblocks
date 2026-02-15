@@ -56,11 +56,12 @@ Starting from v0.5.0 the framework requires the service to have `GetSessionData(
 
 ## Considerations and gotchas
 
-- you don't need to call `r.ParseForm()` in your handlers: the middleware does it. Just use `r.Form["param"]`.
+- **Important**: The project is still in development mode and not production ready. Breaking changes may occur.
+- You don't need to call `r.ParseForm()` in your handlers: the middleware does it. Just use `r.Form["param"]`.
 
 ## Breaking changes
 
- * **v0.5.0**: in `dbase.Config` the ConnString field now has camelCase in yaml, not snake case: ~~`conn_string`~~ -> `connString`
+ * **v0.5.0**: The default YAML key convention for Config fields is now **camelCase**. Multiple Config YAML keys were modified, config files must be converted.
 
 ## Roadmap
 
