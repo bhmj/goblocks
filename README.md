@@ -15,6 +15,7 @@ Any service built with **Goblocks App** framework contains out of the box:
  - **Sentry reporting**
  - **Request rate limiting**
  - **Connection limiting**
+ - **CORS support**
  - **Kubernetes health endpoints**
  - Advanced **logging** (based on Zap)
  - **HTTP replying methods**
