@@ -68,13 +68,16 @@ func NewServer(
 
 	// middlewares sequence (in order of execution during request handling):
 	//
-	// -> http server
+	// http server ->
 	//
-	// connection limiting
-	// rate limiting
-	// authentication
-	// sentry handler
-	// panic logging (logs panic and repanics for sentry)
+	// CORS middleware (if enabled) ->
+	// connection limiting ->
+	// rate limiting ->
+	// authentication ->
+	// sentry handler ->
+	// authentication ->
+	// sentry handler ->
+	// panic logging (logs panic and repanics for sentry) ->
 	//
 	// -> ROUTER (determine the necessity of further processing)
 	//
@@ -82,20 +85,21 @@ func NewServer(
 	//
 	// -> SERVICE HANDLER
 
+	if err := cfg.Validate(); err != nil {
+		return nil, fmt.Errorf("invalid config: %w", err)
+	}
+
 	safetyWrappers := func(router Router) http.Handler {
-		return connLimiterMiddleware(
-			rateLimiterMiddleware(
-				authMiddleware(
-					sentryHandler.HandleFunc(
-						panicLoggerMiddleware(router, logger),
-					),
-					authProvider,
-				),
-				rateLimiter,
-			),
-			connWatcher,
-			cfg.OpenConnLimit,
-		)
+		var handler http.Handler
+		handler = panicLoggerMiddleware(router, logger)
+		handler = sentryHandler.Handle(handler)
+		handler = authMiddleware(handler, authProvider)
+		handler = rateLimiterMiddleware(handler, rateLimiter)
+		handler = connLimiterMiddleware(handler, connWatcher, cfg.OpenConnLimit)
+		if cfg.CORS {
+			handler = corsMiddleware(handler, cfg.Domain)
+		}
+		return handler
 	}
 
 	srv := &httpserver{

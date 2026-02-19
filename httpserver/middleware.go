@@ -75,6 +75,22 @@ func panicLoggerMiddleware(next http.Handler, logger log.MetaLogger) http.Handle
 	}
 }
 
+func corsMiddleware(next http.Handler, domain string) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", domain)
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+		w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+		if req.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(w, req)
+	}
+}
+
 // after router middlewares
 
 func instrumentationMiddleware(

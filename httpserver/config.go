@@ -28,12 +28,21 @@ type Config struct {
 	TLSUseClientCert bool           `yaml:"tlsUseClientCert" description:"Require and verify client certificate"`
 	TLSClientCA      string         `yaml:"tlsClientCA" description:"Certificate Authority file for checking the authenticity of client"` //nolint:tagliatelle
 	CORS             bool           `yaml:"cors" description:"Allow CORS"`
+	Domain           string         `yaml:"domain" description:"Domain for CORS Access-Control-Allow-Origin header"`
 	Token            string         `yaml:"token" description:"Secret auth token"`
 	RateLimit        rate.Limit     `yaml:"rateLimit" description:"Rate limit (RPS)" default:"10000"`
 	OpenConnLimit    int            `yaml:"openConnLimit" description:"Open incoming connection limit" default:"1000"`
 	ReadTimeout      time.Duration  `yaml:"readTimeout" description:"Server read timeout (closes idle keep-alive connection)" default:"5m"`
 	ShutdownTimeout  time.Duration  `yaml:"shutdownTimeout" description:"Server shutdown timeout" default:"2s"`
 	Metrics          metrics.Config `yaml:"metrics" description:"Server metrics configuration"`
+}
+
+// Validate checks the configuration for consistency.
+func (t *Config) Validate() error {
+	if t.CORS && t.Domain == "" {
+		return fmt.Errorf("domain must be set when CORS is enabled")
+	}
+	return nil
 }
 
 // CertFile returns filename of TLS certificate containing
